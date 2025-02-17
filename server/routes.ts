@@ -17,7 +17,6 @@ import multer from "multer";
 import { extname } from "path";
 import * as openai from 'openai';
 
-
 // Configure multer for file upload
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -732,6 +731,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error processing uploaded files:", error);
       res.status(500).json({ message: "Failed to process uploaded files" });
+    }
+  });
+
+  // New Integration Routes
+  app.post("/api/market-intelligence/integrations/google-drive", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      // Store integration token and details
+      await storage.createIntegration({
+        user_id: req.user.id,
+        service: "google_drive",
+        access_token: req.body.access_token,
+        refresh_token: req.body.refresh_token,
+        expires_at: new Date(Date.now() + req.body.expires_in * 1000),
+        created_at: new Date(),
+      });
+
+      res.json({ message: "Google Drive integration added successfully" });
+    } catch (error) {
+      console.error("Error adding Google Drive integration:", error);
+      res.status(500).json({ message: "Failed to add Google Drive integration" });
+    }
+  });
+
+  app.post("/api/market-intelligence/integrations/notion", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      // Store Notion integration details
+      await storage.createIntegration({
+        user_id: req.user.id,
+        service: "notion",
+        access_token: req.body.access_token,
+        workspace_id: req.body.workspace_id,
+        created_at: new Date(),
+      });
+
+      res.json({ message: "Notion integration added successfully" });
+    } catch (error) {
+      console.error("Error adding Notion integration:", error);
+      res.status(500).json({ message: "Failed to add Notion integration" });
+    }
+  });
+
+  app.post("/api/market-intelligence/integrations/salesforce", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      // Store Salesforce integration details
+      await storage.createIntegration({
+        user_id: req.user.id,
+        service: "salesforce",
+        access_token: req.body.access_token,
+        refresh_token: req.body.refresh_token,
+        instance_url: req.body.instance_url,
+        created_at: new Date(),
+      });
+
+      res.json({ message: "Salesforce integration added successfully" });
+    } catch (error) {
+      console.error("Error adding Salesforce integration:", error);
+      res.status(500).json({ message: "Failed to add Salesforce integration" });
+    }
+  });
+
+  app.get("/api/market-intelligence/integrations", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const integrations = await storage.getIntegrations(req.user.id);
+      res.json(integrations);
+    } catch (error) {
+      console.error("Error fetching integrations:", error);
+      res.status(500).json({ message: "Failed to fetch integrations" });
+    }
+  });
+
+  app.delete("/api/market-intelligence/integrations/:id", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      await storage.deleteIntegration(parseInt(req.params.id));
+      res.sendStatus(200);
+    } catch (error) {
+      console.error("Error removing integration:", error);
+      res.status(500).json({ message: "Failed to remove integration" });
     }
   });
 

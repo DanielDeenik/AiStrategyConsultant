@@ -52,9 +52,15 @@ interface FileAnalysis {
   uploadedAt: string;
 }
 
+interface Integration {
+  id: string;
+  service: string;
+}
+
 export default function MarketIntelligencePage() {
   const { toast } = useToast();
   const [uploadedFiles, setUploadedFiles] = useState<FileAnalysis[]>([]);
+  const [activeIntegrations, setActiveIntegrations] = useState<Integration[]>([]);
 
   const { data: presuasionScores, isLoading: loadingPresuasion } = useQuery<PresuasionScore[]>({
     queryKey: ["/api/market-intelligence/pre-suasion"],
@@ -108,12 +114,52 @@ export default function MarketIntelligencePage() {
     },
   });
 
+  const integrationMutation = useMutation({
+    mutationFn: async (service: string) => {
+      //Implementation to handle integration connection/disconnection
+      const response = await fetch(`/api/integrations/${service}`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to connect to ${service}`);
+      }
+      return response.json();
+    },
+    onSuccess: (data: Integration) => {
+      setActiveIntegrations([...activeIntegrations, data]);
+      toast({title: `${data.service} connected successfully`});
+    },
+    onError: (error: Error) => {
+      toast({title: `Failed to connect to ${error.message}`, variant: "destructive"})
+    }
+  })
+
+  const handleRemoveIntegration = async (id: string) => {
+    //Implementation to handle removing integration
+    try{
+      const response = await fetch(`/api/integrations/${id}`, {method: 'DELETE'});
+      if(!response.ok){
+        throw new Error('Failed to disconnect integration');
+      }
+      setActiveIntegrations(activeIntegrations.filter(integration => integration.id !== id));
+      toast({title: 'Integration disconnected successfully'});
+    } catch (error){
+      toast({title: `Failed to disconnect integration: ${error}`, variant: 'destructive'});
+    }
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
       uploadMutation.mutate(files);
     }
   };
+
+  const handleGoogleDriveAuth = () => integrationMutation.mutate("google-drive");
+  const handleDropboxAuth = () => integrationMutation.mutate("dropbox");
+  const handleNotionAuth = () => integrationMutation.mutate("notion");
+  const handleCustomAPIAuth = () => integrationMutation.mutate("custom-api");
+
 
   if (isLoading) {
     return (
@@ -230,7 +276,12 @@ export default function MarketIntelligencePage() {
           <CardContent>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" className="h-24 flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  className="h-24 flex flex-col gap-2"
+                  onClick={handleGoogleDriveAuth}
+                  disabled={integrationMutation.isPending}
+                >
                   <img
                     src="https://www.google.com/drive/static/images/drive/logo-drive.png"
                     alt="Google Drive"
@@ -238,7 +289,12 @@ export default function MarketIntelligencePage() {
                   />
                   <span className="text-sm">Connect Google Drive</span>
                 </Button>
-                <Button variant="outline" className="h-24 flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  className="h-24 flex flex-col gap-2"
+                  onClick={handleDropboxAuth}
+                  disabled={integrationMutation.isPending}
+                >
                   <img
                     src="https://www.dropbox.com/static/images/logo.svg"
                     alt="Dropbox"
@@ -246,7 +302,12 @@ export default function MarketIntelligencePage() {
                   />
                   <span className="text-sm">Connect Dropbox</span>
                 </Button>
-                <Button variant="outline" className="h-24 flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  className="h-24 flex flex-col gap-2"
+                  onClick={handleNotionAuth}
+                  disabled={integrationMutation.isPending}
+                >
                   <img
                     src="https://www.notion.so/front-static/logo-ios.png"
                     alt="Notion"
@@ -254,11 +315,41 @@ export default function MarketIntelligencePage() {
                   />
                   <span className="text-sm">Connect Notion</span>
                 </Button>
-                <Button variant="outline" className="h-24 flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  className="h-24 flex flex-col gap-2"
+                  onClick={handleCustomAPIAuth}
+                  disabled={integrationMutation.isPending}
+                >
                   <Database className="h-8 w-8" />
                   <span className="text-sm">Connect Custom API</span>
                 </Button>
               </div>
+              {activeIntegrations.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <h4 className="font-medium">Active Integrations</h4>
+                  <div className="space-y-2">
+                    {activeIntegrations.map((integration) => (
+                      <div
+                        key={integration.id}
+                        className="flex items-center justify-between p-2 bg-muted/50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                          <span>{integration.service}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveIntegration(integration.id)}
+                        >
+                          Disconnect
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
