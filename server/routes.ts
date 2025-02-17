@@ -6,6 +6,7 @@ import { generateStrategy, analyzeCompetitor } from "./openai";
 import { insertStrategySchema, insertCompetitorSchema } from "@shared/schema";
 import { requireAuth } from "./jwt";
 import { aiAnalysisService } from "./services/ai-analysis";
+import { strategyConfidenceService } from "./services/strategy-confidence";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -153,6 +154,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "Unauthorized" });
     }
     res.json(req.user);
+  });
+
+  app.post("/api/strategy/confidence-score", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { strategy, marketData, competitorData, historicalData, strategyId } = req.body;
+
+      const confidenceMetrics = await strategyConfidenceService.calculateConfidence(
+        strategy,
+        marketData,
+        competitorData,
+        historicalData
+      );
+
+      const result = await storage.createStrategyConfidence({
+        ...confidenceMetrics,
+        strategy_id: strategyId,
+        calculated_at: new Date(),
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error calculating strategy confidence:", error);
+      res.status(500).json({ message: "Failed to calculate strategy confidence" });
+    }
+  });
+
+  app.get("/api/strategy/:strategyId/confidence", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const strategyId = parseInt(req.params.strategyId);
+      const confidence = await storage.getStrategyConfidence(strategyId);
+      if (!confidence) {
+        return res.status(404).json({ message: "Strategy confidence not found" });
+      }
+      res.json(confidence);
+    } catch (error) {
+      console.error("Error fetching strategy confidence:", error);
+      res.status(500).json({ message: "Failed to fetch strategy confidence" });
+    }
+  });
+
+  app.get("/api/strategy/:strategyId/confidence/history", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const strategyId = parseInt(req.params.strategyId);
+      const history = await storage.getHistoricalConfidence(strategyId);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching confidence history:", error);
+      res.status(500).json({ message: "Failed to fetch confidence history" });
+    }
   });
 
   const httpServer = createServer(app);

@@ -3,7 +3,8 @@ import {
   InsertUser, User, Strategy, Competitor, Session,
   users, strategies, competitors, sessions,
   viralityScores, marketTrends, competitiveAnalysis,
-  ViralityScore, MarketTrend, CompetitiveAnalysis
+  ViralityScore, MarketTrend, CompetitiveAnalysis,
+  strategyConfidence, type StrategyConfidence
 } from "@shared/schema";
 import session from "express-session";
 import { db } from "./db";
@@ -138,6 +139,29 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(competitiveAnalysis)
       .where(eq(competitiveAnalysis.strategy_id, strategyId));
+  }
+
+  async createStrategyConfidence(confidence: Omit<StrategyConfidence, "id">): Promise<StrategyConfidence> {
+    const [newConfidence] = await db.insert(strategyConfidence).values(confidence).returning();
+    return newConfidence;
+  }
+
+  async getStrategyConfidence(strategyId: number): Promise<StrategyConfidence | undefined> {
+    const [confidence] = await db
+      .select()
+      .from(strategyConfidence)
+      .where(eq(strategyConfidence.strategy_id, strategyId))
+      .orderBy(strategyConfidence.calculated_at)
+      .limit(1);
+    return confidence;
+  }
+
+  async getHistoricalConfidence(strategyId: number): Promise<StrategyConfidence[]> {
+    return db
+      .select()
+      .from(strategyConfidence)
+      .where(eq(strategyConfidence.strategy_id, strategyId))
+      .orderBy(strategyConfidence.calculated_at);
   }
 }
 

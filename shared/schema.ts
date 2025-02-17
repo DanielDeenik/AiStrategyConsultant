@@ -136,6 +136,26 @@ export const insertCompetitiveAnalysisSchema = createInsertSchema(competitiveAna
   ai_recommendations: true,
 });
 
+export const strategyConfidence = pgTable("strategy_confidence", {
+  id: serial("id").primaryKey(),
+  strategy_id: integer("strategy_id").references(() => strategies.id).notNull(),
+  confidence_score: decimal("confidence_score").notNull(),
+  market_alignment: decimal("market_alignment").notNull(),
+  competitor_benchmark: decimal("competitor_benchmark").notNull(),
+  historical_success: decimal("historical_success").notNull(),
+  ai_recommendations: json("ai_recommendations").notNull(),
+  calculated_at: timestamp("calculated_at").defaultNow(),
+});
+
+export const insertStrategyConfidenceSchema = createInsertSchema(strategyConfidence).pick({
+  strategy_id: true,
+  confidence_score: true,
+  market_alignment: true,
+  competitor_benchmark: true,
+  historical_success: true,
+  ai_recommendations: true,
+});
+
 // Export types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -145,3 +165,5 @@ export type Session = typeof sessions.$inferSelect;
 export type ViralityScore = typeof viralityScores.$inferSelect;
 export type MarketTrend = typeof marketTrends.$inferSelect;
 export type CompetitiveAnalysis = typeof competitiveAnalysis.$inferSelect;
+export type StrategyConfidence = typeof strategyConfidence.$inferSelect;
+export type InsertStrategyConfidence = z.infer<typeof insertStrategyConfidenceSchema>;
