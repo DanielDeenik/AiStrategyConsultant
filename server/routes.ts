@@ -12,6 +12,7 @@ import { executionAutomationService } from "./services/execution-automation";
 import { decisionSimulationService } from "./services/decision-simulation";
 import { randomBytes } from "crypto";
 import { presuasionAnalysisService } from "./services/pre-suasion-analysis";
+import { marketTrendsService } from "./services/market-trends";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -606,6 +607,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching A/B test results:", error);
       res.status(500).json({ message: "Failed to fetch A/B test results" });
+    }
+  });
+
+  app.post("/api/market-intelligence/analyze-trend", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { keyword, industryCategory, marketData } = req.body;
+
+      const trendAnalysis = await marketTrendsService.analyzeTrend(
+        keyword,
+        industryCategory,
+        marketData
+      );
+
+      const trend = await storage.createMarketTrend({
+        keyword,
+        trend_score: trendAnalysis.trend_score.toString(),
+        sentiment_score: trendAnalysis.sentiment_score.toString(),
+        volume: trendAnalysis.volume,
+        growth_rate: trendAnalysis.growth_rate.toString(),
+        data_source: "AI Analysis",
+        industry_impact_score: trendAnalysis.industry_impact_score.toString(),
+        venture_capital_interest: trendAnalysis.venture_capital_interest.toString(),
+        forecast_confidence: trendAnalysis.forecast_confidence.toString(),
+        predicted_peak_date: trendAnalysis.predicted_peak_date,
+        ai_insights: trendAnalysis.ai_insights,
+        industry_category: industryCategory,
+        related_technologies: trendAnalysis.related_technologies,
+      });
+
+      res.json(trend);
+    } catch (error) {
+      console.error("Error analyzing market trend:", error);
+      res.status(500).json({ message: "Failed to analyze market trend" });
+    }
+  });
+
+  app.post("/api/market-intelligence/trend-insights", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { trends } = req.body;
+      const insights = await marketTrendsService.aggregateTrendInsights(trends);
+      res.json(insights);
+    } catch (error) {
+      console.error("Error generating trend insights:", error);
+      res.status(500).json({ message: "Failed to generate trend insights" });
     }
   });
 

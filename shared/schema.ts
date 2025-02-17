@@ -64,6 +64,13 @@ export const marketTrends = pgTable("market_trends", {
   volume: integer("volume").notNull(),
   growth_rate: decimal("growth_rate").notNull(),
   data_source: text("data_source").notNull(),
+  industry_impact_score: decimal("industry_impact_score").notNull(),
+  venture_capital_interest: decimal("venture_capital_interest").notNull(),
+  forecast_confidence: decimal("forecast_confidence").notNull(),
+  predicted_peak_date: timestamp("predicted_peak_date"),
+  ai_insights: json("ai_insights").notNull(),
+  industry_category: text("industry_category").notNull(),
+  related_technologies: text("related_technologies").array().notNull(),
   captured_at: timestamp("captured_at").defaultNow(),
 });
 
@@ -89,7 +96,6 @@ export const strategyConfidence = pgTable("strategy_confidence", {
   ai_recommendations: json("ai_recommendations").notNull(),
   calculated_at: timestamp("calculated_at").defaultNow(),
 });
-
 
 // New table for growth playbooks
 export const growthPlaybooks = pgTable("growth_playbooks", {
@@ -238,6 +244,13 @@ export const insertMarketTrendSchema = createInsertSchema(marketTrends).pick({
   volume: true,
   growth_rate: true,
   data_source: true,
+  industry_impact_score: true,
+  venture_capital_interest: true,
+  forecast_confidence: true,
+  predicted_peak_date: true,
+  ai_insights: true,
+  industry_category: true,
+  related_technologies: true,
 });
 
 export const insertCompetitiveAnalysisSchema = createInsertSchema(competitiveAnalysis).pick({
