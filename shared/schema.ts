@@ -79,6 +79,32 @@ export const competitiveAnalysis = pgTable("competitive_analysis", {
   analyzed_at: timestamp("analyzed_at").defaultNow(),
 });
 
+// New table for growth playbooks
+export const growthPlaybooks = pgTable("growth_playbooks", {
+  id: serial("id").primaryKey(),
+  strategy_id: integer("strategy_id").references(() => strategies.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  market_insights: json("market_insights").notNull(),
+  competitor_insights: json("competitor_insights").notNull(),
+  growth_tactics: json("growth_tactics").notNull(),
+  confidence_score: decimal("confidence_score").notNull(),
+  generated_at: timestamp("generated_at").defaultNow(),
+  scheduled_for: timestamp("scheduled_for"),
+  user_id: integer("user_id").references(() => users.id).notNull(),
+});
+
+export const strategyConfidence = pgTable("strategy_confidence", {
+  id: serial("id").primaryKey(),
+  strategy_id: integer("strategy_id").references(() => strategies.id).notNull(),
+  confidence_score: decimal("confidence_score").notNull(),
+  market_alignment: decimal("market_alignment").notNull(),
+  competitor_benchmark: decimal("competitor_benchmark").notNull(),
+  historical_success: decimal("historical_success").notNull(),
+  ai_recommendations: json("ai_recommendations").notNull(),
+  calculated_at: timestamp("calculated_at").defaultNow(),
+});
+
 // Schemas for inserting data
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -136,17 +162,6 @@ export const insertCompetitiveAnalysisSchema = createInsertSchema(competitiveAna
   ai_recommendations: true,
 });
 
-export const strategyConfidence = pgTable("strategy_confidence", {
-  id: serial("id").primaryKey(),
-  strategy_id: integer("strategy_id").references(() => strategies.id).notNull(),
-  confidence_score: decimal("confidence_score").notNull(),
-  market_alignment: decimal("market_alignment").notNull(),
-  competitor_benchmark: decimal("competitor_benchmark").notNull(),
-  historical_success: decimal("historical_success").notNull(),
-  ai_recommendations: json("ai_recommendations").notNull(),
-  calculated_at: timestamp("calculated_at").defaultNow(),
-});
-
 export const insertStrategyConfidenceSchema = createInsertSchema(strategyConfidence).pick({
   strategy_id: true,
   confidence_score: true,
@@ -155,6 +170,19 @@ export const insertStrategyConfidenceSchema = createInsertSchema(strategyConfide
   historical_success: true,
   ai_recommendations: true,
 });
+
+export const insertGrowthPlaybookSchema = createInsertSchema(growthPlaybooks).pick({
+  strategy_id: true,
+  title: true,
+  description: true,
+  market_insights: true,
+  competitor_insights: true,
+  growth_tactics: true,
+  confidence_score: true,
+  scheduled_for: true,
+  user_id: true,
+});
+
 
 // Export types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -167,3 +195,5 @@ export type MarketTrend = typeof marketTrends.$inferSelect;
 export type CompetitiveAnalysis = typeof competitiveAnalysis.$inferSelect;
 export type StrategyConfidence = typeof strategyConfidence.$inferSelect;
 export type InsertStrategyConfidence = z.infer<typeof insertStrategyConfidenceSchema>;
+export type GrowthPlaybook = typeof growthPlaybooks.$inferSelect;
+export type InsertGrowthPlaybook = z.infer<typeof insertGrowthPlaybookSchema>;

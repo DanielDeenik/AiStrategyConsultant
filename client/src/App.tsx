@@ -6,13 +6,14 @@ import { AuthProvider } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
+import MarketIntelligencePage from "@/pages/market-intelligence";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
   return (
     <Switch>
       <ProtectedRoute path="/" component={HomePage} />
-      <ProtectedRoute path="/market-intelligence" component={() => <div>Market Intelligence</div>} />
+      <ProtectedRoute path="/market-intelligence" component={MarketIntelligencePage} />
       <ProtectedRoute path="/ai-strategy" component={() => <div>AI Strategy</div>} />
       <ProtectedRoute path="/execution" component={() => <div>Execution Automation</div>} />
       <ProtectedRoute path="/simulations" component={() => <div>Decision Simulations</div>} />

@@ -7,6 +7,7 @@ import { insertStrategySchema, insertCompetitorSchema } from "@shared/schema";
 import { requireAuth } from "./jwt";
 import { aiAnalysisService } from "./services/ai-analysis";
 import { strategyConfidenceService } from "./services/strategy-confidence";
+import { growthPlaybookService } from "./services/growth-playbook";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -218,6 +219,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching confidence history:", error);
       res.status(500).json({ message: "Failed to fetch confidence history" });
+    }
+  });
+
+  app.post("/api/strategy/growth-playbook", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { strategy, marketData, competitorData, industryContext, strategyId } = req.body;
+
+      const playbook = await growthPlaybookService.generatePlaybook(
+        strategy,
+        marketData,
+        competitorData,
+        industryContext
+      );
+
+      const result = await storage.createGrowthPlaybook({
+        ...playbook,
+        strategy_id: strategyId,
+        user_id: req.user.id,
+        scheduled_for: null,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error generating growth playbook:", error);
+      res.status(500).json({ message: "Failed to generate growth playbook" });
+    }
+  });
+
+  app.post("/api/strategy/schedule-playbook", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { strategyId, scheduledFor } = req.body;
+      await growthPlaybookService.schedulePlaybookGeneration(
+        strategyId,
+        req.user.id,
+        new Date(scheduledFor)
+      );
+      res.json({ message: "Playbook generation scheduled successfully" });
+    } catch (error) {
+      console.error("Error scheduling playbook:", error);
+      res.status(500).json({ message: "Failed to schedule playbook generation" });
+    }
+  });
+
+  app.get("/api/strategy/:strategyId/playbooks", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const strategyId = parseInt(req.params.strategyId);
+      const playbooks = await storage.getPlaybooksByStrategy(strategyId);
+      res.json(playbooks);
+    } catch (error) {
+      console.error("Error fetching playbooks:", error);
+      res.status(500).json({ message: "Failed to fetch playbooks" });
+    }
+  });
+
+  app.get("/api/strategy/scheduled-playbooks", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const playbooks = await storage.getScheduledPlaybooks(req.user.id);
+      res.json(playbooks);
+    } catch (error) {
+      console.error("Error fetching scheduled playbooks:", error);
+      res.status(500).json({ message: "Failed to fetch scheduled playbooks" });
     }
   });
 

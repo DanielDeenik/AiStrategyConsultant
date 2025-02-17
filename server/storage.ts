@@ -11,6 +11,11 @@ import { db } from "./db";
 import { eq, gt, and } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
+import {
+  growthPlaybooks,
+  type GrowthPlaybook,
+  type InsertGrowthPlaybook,
+} from "@shared/schema";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -162,6 +167,45 @@ export class DatabaseStorage implements IStorage {
       .from(strategyConfidence)
       .where(eq(strategyConfidence.strategy_id, strategyId))
       .orderBy(strategyConfidence.calculated_at);
+  }
+
+  async getStrategy(id: number): Promise<Strategy | undefined> {
+    const [strategy] = await db.select().from(strategies).where(eq(strategies.id, id));
+    return strategy;
+  }
+
+  async createGrowthPlaybook(playbook: InsertGrowthPlaybook): Promise<GrowthPlaybook> {
+    const [newPlaybook] = await db.insert(growthPlaybooks).values(playbook).returning();
+    return newPlaybook;
+  }
+
+  async getGrowthPlaybook(id: number): Promise<GrowthPlaybook | undefined> {
+    const [playbook] = await db
+      .select()
+      .from(growthPlaybooks)
+      .where(eq(growthPlaybooks.id, id));
+    return playbook;
+  }
+
+  async getPlaybooksByStrategy(strategyId: number): Promise<GrowthPlaybook[]> {
+    return db
+      .select()
+      .from(growthPlaybooks)
+      .where(eq(growthPlaybooks.strategy_id, strategyId))
+      .orderBy(growthPlaybooks.generated_at);
+  }
+
+  async getScheduledPlaybooks(userId: number): Promise<GrowthPlaybook[]> {
+    return db
+      .select()
+      .from(growthPlaybooks)
+      .where(
+        and(
+          eq(growthPlaybooks.user_id, userId),
+          gt(growthPlaybooks.scheduled_for, new Date())
+        )
+      )
+      .orderBy(growthPlaybooks.scheduled_for);
   }
 }
 
