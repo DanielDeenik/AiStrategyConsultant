@@ -223,11 +223,13 @@ export default function MarketIntelligencePage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify(content),
       });
       if (!response.ok) {
-        throw new Error('Failed to perform STEPPS analysis');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to perform STEPPS analysis');
       }
       return response.json();
     },
@@ -275,9 +277,10 @@ export default function MarketIntelligencePage() {
   const handleAddUrl = () => {
     if (urlInput.trim()) {
       webScrapingMutation.mutate(urlInput.trim());
+      // Perform STEPPS analysis on the URL content
       steppsAnalysisMutation.mutate({
         content: urlInput.trim(),
-        contentType: 'website',
+        contentType: 'url',  // Changed from 'website' to be more specific
       });
     }
   };
