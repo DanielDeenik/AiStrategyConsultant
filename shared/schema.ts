@@ -249,6 +249,54 @@ export const insertKpiMetricSchema = createInsertSchema(kpiMetrics).pick({
   user_id: true,
 });
 
+// New tables for decision simulations
+export const decisionSimulations = pgTable("decision_simulations", {
+  id: serial("id").primaryKey(),
+  strategy_id: integer("strategy_id").references(() => strategies.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  input_parameters: json("input_parameters").notNull(),
+  monte_carlo_iterations: integer("monte_carlo_iterations").notNull(),
+  status: text("status", { enum: ["pending", "running", "completed", "failed"] }).default("pending").notNull(),
+  results: json("results"),
+  confidence_score: decimal("confidence_score"),
+  created_at: timestamp("created_at").defaultNow(),
+  completed_at: timestamp("completed_at"),
+  user_id: integer("user_id").references(() => users.id).notNull(),
+});
+
+export const simulationScenarios = pgTable("simulation_scenarios", {
+  id: serial("id").primaryKey(),
+  simulation_id: integer("simulation_id").references(() => decisionSimulations.id).notNull(),
+  name: text("name").notNull(),
+  probability: decimal("probability").notNull(),
+  financial_impact: decimal("financial_impact").notNull(),
+  market_adoption_rate: decimal("market_adoption_rate").notNull(),
+  risk_factors: json("risk_factors").notNull(),
+  metrics: json("metrics").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// Add schemas for inserting data
+export const insertDecisionSimulationSchema = createInsertSchema(decisionSimulations).pick({
+  strategy_id: true,
+  title: true,
+  description: true,
+  input_parameters: true,
+  monte_carlo_iterations: true,
+  user_id: true,
+});
+
+export const insertSimulationScenarioSchema = createInsertSchema(simulationScenarios).pick({
+  simulation_id: true,
+  name: true,
+  probability: true,
+  financial_impact: true,
+  market_adoption_rate: true,
+  risk_factors: true,
+  metrics: true,
+});
+
 // Export types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -268,3 +316,7 @@ export type ToolIntegration = typeof toolIntegrations.$inferSelect;
 export type InsertToolIntegration = z.infer<typeof insertToolIntegrationSchema>;
 export type KpiMetric = typeof kpiMetrics.$inferSelect;
 export type InsertKpiMetric = z.infer<typeof insertKpiMetricSchema>;
+export type DecisionSimulation = typeof decisionSimulations.$inferSelect;
+export type InsertDecisionSimulation = z.infer<typeof insertDecisionSimulationSchema>;
+export type SimulationScenario = typeof simulationScenarios.$inferSelect;
+export type InsertSimulationScenario = z.infer<typeof insertSimulationScenarioSchema>;

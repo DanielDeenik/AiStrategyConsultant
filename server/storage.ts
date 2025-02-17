@@ -27,6 +27,14 @@ import {
   type KpiMetric,
   type InsertKpiMetric,
 } from "@shared/schema";
+import {
+  decisionSimulations,
+  simulationScenarios,
+  type DecisionSimulation,
+  type InsertDecisionSimulation,
+  type SimulationScenario,
+  type InsertSimulationScenario,
+} from "@shared/schema";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -276,6 +284,56 @@ export class DatabaseStorage implements IStorage {
       .where(eq(kpiMetrics.id, metricId))
       .returning();
     return updatedMetric;
+  }
+
+  // Decision Simulations
+  async createDecisionSimulation(simulation: InsertDecisionSimulation): Promise<DecisionSimulation> {
+    const [newSimulation] = await db.insert(decisionSimulations).values(simulation).returning();
+    return newSimulation;
+  }
+
+  async getSimulation(id: number): Promise<DecisionSimulation | undefined> {
+    const [simulation] = await db
+      .select()
+      .from(decisionSimulations)
+      .where(eq(decisionSimulations.id, id));
+    return simulation;
+  }
+
+  async getSimulationsByStrategy(strategyId: number): Promise<DecisionSimulation[]> {
+    return db
+      .select()
+      .from(decisionSimulations)
+      .where(eq(decisionSimulations.strategy_id, strategyId))
+      .orderBy(decisionSimulations.created_at);
+  }
+
+  async updateSimulationStatus(
+    simulationId: number,
+    status: "pending" | "running" | "completed" | "failed"
+  ): Promise<DecisionSimulation> {
+    const [updatedSimulation] = await db
+      .update(decisionSimulations)
+      .set({
+        status,
+        completed_at: status === "completed" ? new Date() : null,
+      })
+      .where(eq(decisionSimulations.id, simulationId))
+      .returning();
+    return updatedSimulation;
+  }
+
+  async createSimulationScenario(scenario: InsertSimulationScenario): Promise<SimulationScenario> {
+    const [newScenario] = await db.insert(simulationScenarios).values(scenario).returning();
+    return newScenario;
+  }
+
+  async getSimulationScenarios(simulationId: number): Promise<SimulationScenario[]> {
+    return db
+      .select()
+      .from(simulationScenarios)
+      .where(eq(simulationScenarios.simulation_id, simulationId))
+      .orderBy(simulationScenarios.created_at);
   }
 }
 

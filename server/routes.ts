@@ -9,6 +9,7 @@ import { aiAnalysisService } from "./services/ai-analysis";
 import { strategyConfidenceService } from "./services/strategy-confidence";
 import { growthPlaybookService } from "./services/growth-playbook";
 import { executionAutomationService } from "./services/execution-automation";
+import { decisionSimulationService } from "./services/decision-simulation";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -398,6 +399,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating KPI metric:", error);
       res.status(500).json({ message: "Failed to update KPI metric" });
+    }
+  });
+
+  // Decision Simulation Routes
+  app.post("/api/decision/simulator", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const {
+        strategyId,
+        title,
+        description,
+        parameters,
+        iterations,
+      } = req.body;
+
+      await decisionSimulationService.createSimulation(
+        strategyId,
+        req.user.id,
+        title,
+        description,
+        parameters,
+        iterations
+      );
+
+      res.json({ message: "Simulation created successfully" });
+    } catch (error) {
+      console.error("Error creating simulation:", error);
+      res.status(500).json({ message: "Failed to create simulation" });
+    }
+  });
+
+  app.get("/api/decision/simulations/:strategyId", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const strategyId = parseInt(req.params.strategyId);
+      const simulations = await storage.getSimulationsByStrategy(strategyId);
+      res.json(simulations);
+    } catch (error) {
+      console.error("Error fetching simulations:", error);
+      res.status(500).json({ message: "Failed to fetch simulations" });
+    }
+  });
+
+  app.get("/api/decision/simulation/:simulationId/scenarios", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const simulationId = parseInt(req.params.simulationId);
+      const scenarios = await storage.getSimulationScenarios(simulationId);
+      res.json(scenarios);
+    } catch (error) {
+      console.error("Error fetching scenarios:", error);
+      res.status(500).json({ message: "Failed to fetch scenarios" });
     }
   });
 
