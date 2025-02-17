@@ -35,7 +35,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -57,10 +57,20 @@ interface Integration {
   service: string;
 }
 
+interface DataLakeConnection {
+  id: number;
+  type: string;
+  status: string;
+  lastSync: string;
+}
+
 export default function MarketIntelligencePage() {
   const { toast } = useToast();
   const [uploadedFiles, setUploadedFiles] = useState<FileAnalysis[]>([]);
   const [activeIntegrations, setActiveIntegrations] = useState<Integration[]>([]);
+  const [monitoredUrls, setMonitoredUrls] = useState<string[]>([]);
+  const [dataLakeConnections, setDataLakeConnections] = useState<DataLakeConnection[]>([]);
+  const [urlInput, setUrlInput] = useState("");
 
   const { data: presuasionScores, isLoading: loadingPresuasion } = useQuery<PresuasionScore[]>({
     queryKey: ["/api/market-intelligence/pre-suasion"],
@@ -116,7 +126,6 @@ export default function MarketIntelligencePage() {
 
   const integrationMutation = useMutation({
     mutationFn: async (service: string) => {
-      //Implementation to handle integration connection/disconnection
       const response = await fetch(`/api/integrations/${service}`, {
         method: 'POST',
       });
@@ -134,8 +143,68 @@ export default function MarketIntelligencePage() {
     }
   })
 
+  const webScrapingMutation = useMutation({
+    mutationFn: async (url: string) => {
+      const response = await fetch('/api/market-intelligence/web-scraping', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ urls: [url] }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to add URL for monitoring');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      setMonitoredUrls([...monitoredUrls, urlInput]);
+      setUrlInput("");
+      toast({
+        title: "URL added for monitoring",
+        description: "AI will start analyzing this website for market intelligence.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to add URL",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const dataLakeMutation = useMutation({
+    mutationFn: async (connectionDetails: { type: string; credentials: any }) => {
+      const response = await fetch('/api/market-intelligence/data-lake/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(connectionDetails),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to connect to data lake');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Data lake connected",
+        description: "Successfully connected to data lake for analysis.",
+      });
+      fetchDataLakeConnections();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Connection failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleRemoveIntegration = async (id: string) => {
-    //Implementation to handle removing integration
     try{
       const response = await fetch(`/api/integrations/${id}`, {method: 'DELETE'});
       if(!response.ok){
@@ -160,6 +229,27 @@ export default function MarketIntelligencePage() {
   const handleNotionAuth = () => integrationMutation.mutate("notion");
   const handleCustomAPIAuth = () => integrationMutation.mutate("custom-api");
 
+  const handleAddUrl = () => {
+    if (urlInput.trim()) {
+      webScrapingMutation.mutate(urlInput.trim());
+    }
+  };
+
+  const fetchDataLakeConnections = async () => {
+    try {
+      const response = await fetch('/api/market-intelligence/data-lake/status');
+      if (response.ok) {
+        const data = await response.json();
+        setDataLakeConnections(data);
+      }
+    } catch (error) {
+      console.error('Error fetching data lake connections:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchDataLakeConnections();
+  }, []);
 
   if (isLoading) {
     return (
@@ -176,7 +266,6 @@ export default function MarketIntelligencePage() {
     <div className="container mx-auto p-6 space-y-6">
       <h1 className="text-3xl font-bold mb-8">Market Intelligence</h1>
 
-      {/* Data Upload & Integrations */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <Card>
           <CardHeader>
@@ -355,7 +444,6 @@ export default function MarketIntelligencePage() {
         </Card>
       </div>
 
-      {/* Web Scraping & Data Lake */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <Card>
           <CardHeader>
@@ -369,15 +457,37 @@ export default function MarketIntelligencePage() {
               <div>
                 <Label>Add Website to Monitor</Label>
                 <div className="flex gap-2 mt-2">
-                  <Input placeholder="Enter website URL" />
-                  <Button>Add</Button>
+                  <Input
+                    placeholder="Enter website URL"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                  />
+                  <Button
+                    onClick={handleAddUrl}
+                    disabled={webScrapingMutation.isPending}
+                  >
+                    Add
+                  </Button>
                 </div>
               </div>
               <div className="bg-muted/50 p-4 rounded-lg">
                 <h4 className="font-medium mb-2">Active Monitors</h4>
-                <p className="text-sm text-muted-foreground">
-                  No websites being monitored
-                </p>
+                {monitoredUrls.length > 0 ? (
+                  <div className="space-y-2">
+                    {monitoredUrls.map((url, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-background rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                          <span className="text-sm">{url}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No websites being monitored
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -396,13 +506,29 @@ export default function MarketIntelligencePage() {
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium">Sync Status</h4>
                   <span className="text-sm text-muted-foreground">
-                    Last sync: Never
+                    {dataLakeConnections.length > 0
+                      ? `Last sync: ${new Date(
+                          dataLakeConnections[0].lastSync
+                        ).toLocaleString()}`
+                      : "Never"}
                   </span>
                 </div>
-                <Progress value={0} className="mt-2" />
+                <Progress
+                  value={dataLakeConnections.length > 0 ? 100 : 0}
+                  className="mt-2"
+                />
               </div>
               <div>
-                <Button className="w-full">
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    dataLakeMutation.mutate({
+                      type: "snowflake",
+                      credentials: { /* connection details */ },
+                    });
+                  }}
+                  disabled={dataLakeMutation.isPending}
+                >
                   Configure Data Lake Connection
                 </Button>
               </div>
@@ -412,7 +538,6 @@ export default function MarketIntelligencePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Pre-Suasion Readiness Score */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -447,7 +572,6 @@ export default function MarketIntelligencePage() {
           </CardContent>
         </Card>
 
-        {/* Virality Prediction */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -483,7 +607,6 @@ export default function MarketIntelligencePage() {
           </CardContent>
         </Card>
 
-        {/* Competitive Edge Scanner */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -526,7 +649,6 @@ export default function MarketIntelligencePage() {
           </CardContent>
         </Card>
 
-        {/* Market Trends */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

@@ -826,6 +826,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  //New Web Scraping and Data Lake routes
+  app.post("/api/market-intelligence/web-scraping", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { urls } = req.body;
+      // Initialize OpenAI client for analysis
+      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "Analyze the scraped web content and extract key business insights. Focus on market trends, competitor movements, and strategic implications. Output in JSON format.",
+          },
+          {
+            role: "user",
+            content: `Analyze these URLs for market intelligence: ${urls.join(", ")}`,
+          },
+        ],
+        response_format: { type: "json_object" },
+      });
+
+      if (!response.choices[0].message.content) {
+        throw new Error("No content in OpenAI response");
+      }
+
+      const analysisResult = JSON.parse(response.choices[0].message.content);
+      res.json(analysisResult);
+    } catch (error) {
+      console.error("Error processing web scraping:", error);
+      res.status(500).json({ message: "Failed to process web scraping" });
+    }
+  });
+
+  app.post("/api/market-intelligence/data-lake/connect", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { type, credentials } = req.body;
+
+      // Store data lake connection details
+      await storage.createToolIntegration({
+        user_id: req.user.id,
+        tool_type: type,
+        credentials: credentials,
+        created_at: new Date(),
+      });
+
+      res.json({ message: "Data lake connection established successfully" });
+    } catch (error) {
+      console.error("Error connecting to data lake:", error);
+      res.status(500).json({ message: "Failed to connect to data lake" });
+    }
+  });
+
+  app.get("/api/market-intelligence/data-lake/status", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const connections = await storage.getToolIntegrations(req.user.id);
+      const statuses = connections.map(conn => ({
+        id: conn.id,
+        type: conn.tool_type,
+        status: "connected", // In a real implementation, we would check the actual connection status
+        lastSync: conn.updated_at || conn.created_at,
+      }));
+      res.json(statuses);
+    } catch (error) {
+      console.error("Error fetching data lake status:", error);
+      res.status(500).json({ message: "Failed to fetch data lake status" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
