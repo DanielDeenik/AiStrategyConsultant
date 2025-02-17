@@ -7,6 +7,7 @@ import {
 import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import React from 'react'; // Add explicit React import
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -28,7 +29,7 @@ type AuthResponse = {
   refreshToken: string;
 };
 
-export const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
@@ -48,11 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return res.json();
     },
     onSuccess: (response: AuthResponse) => {
-      // Store tokens in localStorage
       localStorage.setItem("accessToken", response.accessToken);
       localStorage.setItem("refreshToken", response.refreshToken);
-
-      // Update user in query cache
       queryClient.setQueryData(["/api/user"], response.user);
     },
     onError: (error: Error) => {
@@ -70,11 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return res.json();
     },
     onSuccess: (response: AuthResponse) => {
-      // Store tokens in localStorage
       localStorage.setItem("accessToken", response.accessToken);
       localStorage.setItem("refreshToken", response.refreshToken);
-
-      // Update user in query cache
       queryClient.setQueryData(["/api/user"], response.user);
     },
     onError: (error: Error) => {
@@ -90,7 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async () => {
       const refreshToken = localStorage.getItem("refreshToken");
       await apiRequest("POST", "/api/admin/logout", { refreshToken });
-      // Clear tokens
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
     },
@@ -106,17 +100,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  const value = React.useMemo(() => ({
+    user: user ?? null,
+    isLoading,
+    error,
+    loginMutation,
+    logoutMutation,
+    registerMutation,
+  }), [user, isLoading, error, loginMutation, logoutMutation, registerMutation]);
+
   return (
-    <AuthContext.Provider
-      value={{
-        user: user ?? null,
-        isLoading,
-        error,
-        loginMutation,
-        logoutMutation,
-        registerMutation,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
