@@ -12,6 +12,12 @@ function Router() {
   return (
     <Switch>
       <ProtectedRoute path="/" component={HomePage} />
+      <ProtectedRoute path="/market-intelligence" component={() => <div>Market Intelligence</div>} />
+      <ProtectedRoute path="/ai-strategy" component={() => <div>AI Strategy</div>} />
+      <ProtectedRoute path="/execution" component={() => <div>Execution Automation</div>} />
+      <ProtectedRoute path="/simulations" component={() => <div>Decision Simulations</div>} />
+      <ProtectedRoute path="/integrations" component={() => <div>API Integrations</div>} />
+      <ProtectedRoute path="/settings" component={() => <div>Settings</div>} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

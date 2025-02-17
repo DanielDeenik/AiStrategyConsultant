@@ -1,123 +1,97 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MainLayout } from "@/components/layout/main-layout";
+import { useQuery } from "@tanstack/react-query";
 import { Strategy, Competitor } from "@shared/schema";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useState } from "react";
-import StrategyCard from "@/components/strategy-card";
-import MarketIntelCard from "@/components/market-intel-card";
-import { useAuth } from "@/hooks/use-auth";
-import { Loader2 } from "lucide-react";
+import { Bell, TrendingUp, AlertCircle } from "lucide-react";
 
 export default function HomePage() {
-  const { toast } = useToast();
-  const { user, logoutMutation } = useAuth();
-  const [prompt, setPrompt] = useState("");
-  const [competitor, setCompetitor] = useState("");
-
-  const { data: strategies = [], isLoading: strategiesLoading } = useQuery<Strategy[]>({
-    queryKey: ["/api/strategies"]
+  const { data: strategies = [] } = useQuery<Strategy[]>({
+    queryKey: ["/api/strategies"],
   });
 
-  const { data: competitors = [], isLoading: competitorsLoading } = useQuery<Competitor[]>({
-    queryKey: ["/api/competitors"]
+  const { data: competitors = [] } = useQuery<Competitor[]>({
+    queryKey: ["/api/competitors"],
   });
-
-  const generateStrategyMutation = useMutation({
-    mutationFn: async (prompt: string) => {
-      const res = await apiRequest("POST", "/api/strategies/generate", { prompt });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/strategies"] });
-      setPrompt("");
-      toast({
-        title: "Strategy generated",
-        description: "New strategy has been created successfully",
-      });
-    },
-  });
-
-  const analyzeCompetitorMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const res = await apiRequest("POST", "/api/competitors/analyze", { name });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/competitors"] });
-      setCompetitor("");
-      toast({
-        title: "Competitor analyzed",
-        description: "New competitor analysis has been created",
-      });
-    },
-  });
-
-  if (strategiesLoading || competitorsLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Welcome, {user?.username}</h1>
-        <Button variant="outline" onClick={() => logoutMutation.mutate()}>
-          Logout
-        </Button>
-      </div>
+    <MainLayout>
+      <div className="grid grid-cols-12 gap-6">
+        {/* Main Content (Real-Time Alerts & AI Summaries) */}
+        <div className="col-span-8">
+          <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        <div>
-          <div className="flex gap-4 mb-6">
-            <Input
-              placeholder="Enter your business question..."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-            />
-            <Button
-              onClick={() => generateStrategyMutation.mutate(prompt)}
-              disabled={generateStrategyMutation.isPending || !prompt}
-            >
-              Generate Strategy
-            </Button>
-          </div>
+          {/* Market Intelligence Updates */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <TrendingUp className="mr-2 h-5 w-5" />
+                Market Intelligence Updates
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {competitors.map((competitor) => (
+                  <div key={competitor.id} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                    <span className="font-medium">{competitor.name}</span>
+                    <span className="text-sm text-muted-foreground">
+                      Sentiment: {competitor.sentiment}/5
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-4">Generated Strategies</h2>
-            {strategies.map((strategy) => (
-              <StrategyCard key={strategy.id} strategy={strategy} />
-            ))}
-          </div>
+          {/* AI-Generated Strategic Alerts */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <AlertCircle className="mr-2 h-5 w-5" />
+                Strategic Alerts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {strategies.map((strategy) => (
+                  <div key={strategy.id} className="p-4 border rounded-lg">
+                    <h3 className="font-medium mb-2">{strategy.title}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {strategy.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <div>
-          <div className="flex gap-4 mb-6">
-            <Input
-              placeholder="Enter competitor name..."
-              value={competitor}
-              onChange={(e) => setCompetitor(e.target.value)}
-            />
-            <Button
-              onClick={() => analyzeCompetitorMutation.mutate(competitor)}
-              disabled={analyzeCompetitorMutation.isPending || !competitor}
-            >
-              Analyze Competitor
-            </Button>
-          </div>
-
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-4">Market Intelligence</h2>
-            {competitors.map((competitor) => (
-              <MarketIntelCard key={competitor.id} competitor={competitor} />
-            ))}
-          </div>
+        {/* Right Sidebar (Recent AI Decisions & Suggested Actions) */}
+        <div className="col-span-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Bell className="mr-2 h-5 w-5" />
+                Recent Insights
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {strategies.slice(0, 3).map((strategy) => (
+                  <div key={strategy.id} className="flex items-start space-x-4">
+                    <div className="w-2 h-2 mt-2 rounded-full bg-primary" />
+                    <div>
+                      <p className="text-sm font-medium">{strategy.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Confidence: {strategy.confidence}%
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-    </div>
+    </MainLayout>
   );
 }
