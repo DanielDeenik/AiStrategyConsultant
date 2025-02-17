@@ -64,6 +64,16 @@ interface DataLakeConnection {
   lastSync: string;
 }
 
+interface SteppsAnalysis {
+  socialCurrency: number;
+  triggers: number;
+  emotion: number;
+  public: number;
+  practicalValue: number;
+  stories: number;
+  recommendations: string[];
+}
+
 export default function MarketIntelligencePage() {
   const { toast } = useToast();
   const [uploadedFiles, setUploadedFiles] = useState<FileAnalysis[]>([]);
@@ -71,6 +81,7 @@ export default function MarketIntelligencePage() {
   const [monitoredUrls, setMonitoredUrls] = useState<string[]>([]);
   const [dataLakeConnections, setDataLakeConnections] = useState<DataLakeConnection[]>([]);
   const [urlInput, setUrlInput] = useState("");
+  const [steppsAnalysis, setSteppsAnalysis] = useState<SteppsAnalysis | null>(null);
 
   const { data: presuasionScores, isLoading: loadingPresuasion } = useQuery<PresuasionScore[]>({
     queryKey: ["/api/market-intelligence/pre-suasion"],
@@ -204,6 +215,36 @@ export default function MarketIntelligencePage() {
     },
   });
 
+  const steppsAnalysisMutation = useMutation({
+    mutationFn: async (content: { content: string; contentType: string }) => {
+      const response = await fetch('/api/market-intelligence/stepps-analysis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(content),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to perform STEPPS analysis');
+      }
+      return response.json();
+    },
+    onSuccess: (data: SteppsAnalysis) => {
+      setSteppsAnalysis(data);
+      toast({
+        title: "STEPPS Analysis Complete",
+        description: "Virality prediction analysis updated.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Analysis Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleRemoveIntegration = async (id: string) => {
     try{
       const response = await fetch(`/api/integrations/${id}`, {method: 'DELETE'});
@@ -232,6 +273,10 @@ export default function MarketIntelligencePage() {
   const handleAddUrl = () => {
     if (urlInput.trim()) {
       webScrapingMutation.mutate(urlInput.trim());
+      steppsAnalysisMutation.mutate({
+        content: urlInput.trim(),
+        contentType: 'website',
+      });
     }
   };
 
@@ -576,33 +621,58 @@ export default function MarketIntelligencePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="h-5 w-5" />
-              Virality Prediction
+              Asqin BV Virality Prediction (STEPPS)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {viralityScores && viralityScores.length > 0 ? (
+            {steppsAnalysis ? (
               <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-medium mb-2">
-                    Virality Score: {parseFloat(latestViralityScore?.total_score ?? "0").toFixed(0)}%
-                  </h3>
-                  <Progress
-                    value={parseFloat(latestViralityScore?.total_score ?? "0")}
-                    className="mb-4"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Social Currency</h3>
+                    <Progress value={steppsAnalysis.socialCurrency * 100} className="mb-1" />
+                    <p className="text-xs text-muted-foreground">{steppsAnalysis.socialCurrency * 100}%</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Triggers</h3>
+                    <Progress value={steppsAnalysis.triggers * 100} className="mb-1" />
+                    <p className="text-xs text-muted-foreground">{steppsAnalysis.triggers * 100}%</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Emotion</h3>
+                    <Progress value={steppsAnalysis.emotion * 100} className="mb-1" />
+                    <p className="text-xs text-muted-foreground">{steppsAnalysis.emotion * 100}%</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Public</h3>
+                    <Progress value={steppsAnalysis.public * 100} className="mb-1" />
+                    <p className="text-xs text-muted-foreground">{steppsAnalysis.public * 100}%</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Practical Value</h3>
+                    <Progress value={steppsAnalysis.practicalValue * 100} className="mb-1" />
+                    <p className="text-xs text-muted-foreground">{steppsAnalysis.practicalValue * 100}%</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Stories</h3>
+                    <Progress value={steppsAnalysis.stories * 100} className="mb-1" />
+                    <p className="text-xs text-muted-foreground">{steppsAnalysis.stories * 100}%</p>
+                  </div>
                 </div>
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={viralityScores}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="created_at" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="total_score" stroke="#8884d8" />
-                  </LineChart>
-                </ResponsiveContainer>
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium mb-2">Recommendations</h3>
+                  <ul className="space-y-2">
+                    {steppsAnalysis.recommendations.map((rec, index) => (
+                      <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             ) : (
-              <p className="text-muted-foreground">No virality data available</p>
+              <p className="text-muted-foreground">No STEPPS analysis data available</p>
             )}
           </CardContent>
         </Card>
