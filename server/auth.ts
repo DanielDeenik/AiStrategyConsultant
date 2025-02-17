@@ -37,6 +37,39 @@ export function setupAuth(app: Express) {
     message: "Too many login attempts, please try again later"
   });
 
+  // Initial admin registration (can only be used once)
+  app.post("/api/admin/register", async (req, res) => {
+    try {
+      const { email, username, password } = req.body;
+
+      // Check if any admin exists
+      const existingAdmin = await storage.getUserByEmail(email);
+      if (existingAdmin) {
+        return res.status(400).json({ message: "Admin already exists" });
+      }
+
+      const hashedPassword = await hashPassword(password);
+      const user = await storage.createUser({
+        email,
+        username,
+        password: hashedPassword,
+        role: "admin"
+      });
+
+      const { accessToken } = generateTokens(user.id, user.role);
+      const refreshToken = await createRefreshToken(user.id, user.role);
+
+      res.status(201).json({
+        user: { id: user.id, email: user.email, role: user.role },
+        accessToken,
+        refreshToken
+      });
+    } catch (error) {
+      console.error('Admin registration error:', error);
+      res.status(500).json({ message: "Failed to register admin" });
+    }
+  });
+
   app.post("/api/admin/login", loginLimiter, async (req, res) => {
     try {
       const { email, password } = req.body;
@@ -59,6 +92,7 @@ export function setupAuth(app: Express) {
         refreshToken
       });
     } catch (error) {
+      console.error('Login error:', error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -71,6 +105,7 @@ export function setupAuth(app: Express) {
       }
       res.sendStatus(200);
     } catch (error) {
+      console.error('Logout error:', error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -97,6 +132,7 @@ export function setupAuth(app: Express) {
       const { accessToken } = generateTokens(user.id, user.role);
       res.json({ accessToken });
     } catch (error) {
+      console.error('Token refresh error:', error);
       res.status(401).json({ message: "Invalid refresh token" });
     }
   });
