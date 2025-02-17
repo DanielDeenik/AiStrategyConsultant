@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   BarChart,
@@ -24,6 +24,7 @@ import {
   Link as LinkIcon,
   Globe,
   Database,
+  Search,
 } from "lucide-react";
 import {
   type ViralityScore,
@@ -37,9 +38,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/use-auth"; // Add auth hook import
+import { useAuth } from "@/hooks/use-auth";
 
 interface FileAnalysis {
   filename: string;
@@ -75,15 +75,64 @@ interface SteppsAnalysis {
   recommendations: string[];
 }
 
+interface CompanySearch {
+  url: string;
+  name: string;
+  analysis: {
+    marketPosition: string;
+    competitiveAdvantages: string[];
+    risks: string[];
+    opportunities: string[];
+  };
+}
+
 export default function MarketIntelligencePage() {
   const { toast } = useToast();
-  const { user } = useAuth(); // Add auth context
+  const { user } = useAuth();
+  const [searchInput, setSearchInput] = useState("");
+  const [analyzedCompany, setAnalyzedCompany] = useState<CompanySearch | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<FileAnalysis[]>([]);
   const [activeIntegrations, setActiveIntegrations] = useState<Integration[]>([]);
   const [monitoredUrls, setMonitoredUrls] = useState<string[]>([]);
   const [dataLakeConnections, setDataLakeConnections] = useState<DataLakeConnection[]>([]);
-  const [urlInput, setUrlInput] = useState("");
   const [steppsAnalysis, setSteppsAnalysis] = useState<SteppsAnalysis | null>(null);
+
+  // New company search mutation
+  const companySearchMutation = useMutation({
+    mutationFn: async (url: string) => {
+      const response = await fetch('/api/market-intelligence/company-search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to analyze company');
+      }
+      return response.json();
+    },
+    onSuccess: (data: CompanySearch) => {
+      setAnalyzedCompany(data);
+      toast({
+        title: "Company Analysis Complete",
+        description: `Successfully analyzed ${data.name}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Analysis Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSearch = () => {
+    if (searchInput.trim()) {
+      companySearchMutation.mutate(searchInput.trim());
+    }
+  };
 
   const { data: presuasionScores, isLoading: loadingPresuasion } = useQuery<PresuasionScore[]>({
     queryKey: ["/api/market-intelligence/pre-suasion"],
@@ -162,7 +211,6 @@ export default function MarketIntelligencePage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Use credentials: 'include' for session authentication
           credentials: 'include'
         },
         body: JSON.stringify({ urls: [url] }),
@@ -174,8 +222,8 @@ export default function MarketIntelligencePage() {
       return response.json();
     },
     onSuccess: () => {
-      setMonitoredUrls([...monitoredUrls, urlInput]);
-      setUrlInput("");
+      setMonitoredUrls([...monitoredUrls, searchInput]);
+      setSearchInput("");
       toast({
         title: "URL added for monitoring",
         description: "AI will start analyzing this website for market intelligence.",
@@ -278,12 +326,12 @@ export default function MarketIntelligencePage() {
   const handleCustomAPIAuth = () => integrationMutation.mutate("custom-api");
 
   const handleAddUrl = () => {
-    if (urlInput.trim()) {
-      webScrapingMutation.mutate(urlInput.trim());
+    if (searchInput.trim()) {
+      webScrapingMutation.mutate(searchInput.trim());
       // Perform STEPPS analysis on the URL content
       steppsAnalysisMutation.mutate({
-        content: urlInput.trim(),
-        contentType: 'url',  // Changed from 'website' to be more specific
+        content: searchInput.trim(),
+        contentType: 'url',
       });
     }
   };
@@ -304,6 +352,26 @@ export default function MarketIntelligencePage() {
     fetchDataLakeConnections();
   }, []);
 
+  // Fix the behavioral insights rendering
+  const renderBehavioralInsights = (insights: Record<string, string>) => {
+    return Object.entries(insights).map(([key, value], index) => (
+      <li key={index} className="text-sm flex items-center gap-2">
+        <AlertCircle className="h-4 w-4 text-primary" />
+        <span>{value}</span>
+      </li>
+    ));
+  };
+
+  // Fix the AI recommendations rendering
+  const renderAIRecommendations = (recommendations: string[]) => {
+    return recommendations.map((rec, index) => (
+      <li key={index} className="text-sm flex items-center gap-2">
+        <AlertCircle className="h-4 w-4 text-primary" />
+        <span>{rec}</span>
+      </li>
+    ));
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -317,7 +385,64 @@ export default function MarketIntelligencePage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold mb-8">Market Intelligence</h1>
+      <h1 className="text-3xl font-bold mb-8">Market Intelligence Hub</h1>
+
+      {/* New Search Section */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="h-5 w-5" />
+            Company Intelligence Search
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter company website URL or name..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                onClick={handleSearch}
+                disabled={companySearchMutation.isPending}
+              >
+                {companySearchMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Search className="h-4 w-4 mr-2" />
+                )}
+                Analyze
+              </Button>
+            </div>
+
+            {analyzedCompany && (
+              <div className="space-y-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <h3 className="font-medium mb-2">Market Position</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {analyzedCompany.analysis.marketPosition}
+                    </p>
+                  </div>
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <h3 className="font-medium mb-2">Competitive Advantages</h3>
+                    <ul className="space-y-1">
+                      {analyzedCompany.analysis.competitiveAdvantages.map((advantage, index) => (
+                        <li key={index} className="text-sm text-muted-foreground flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4 text-primary" />
+                          {advantage}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <Card>
@@ -512,8 +637,8 @@ export default function MarketIntelligencePage() {
                 <div className="flex gap-2 mt-2">
                   <Input
                     placeholder="Enter website URL"
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
                   />
                   <Button
                     onClick={handleAddUrl}
@@ -609,13 +734,8 @@ export default function MarketIntelligencePage() {
                 </div>
                 <div className="bg-muted/50 p-4 rounded-lg">
                   <h4 className="font-medium mb-2">AI Insights</h4>
-                  <ul className="space-y-2 text-sm">
-                    {Object.entries(latestPresuasionScore.behavioral_insights).map(([key, value]) => (
-                      <li key={key} className="flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 text-primary" />
-                        {value}
-                      </li>
-                    ))}
+                  <ul className="space-y-2">
+                    {renderBehavioralInsights(latestPresuasionScore.behavioral_insights as Record<string, string>)}
                   </ul>
                 </div>
               </div>
@@ -629,7 +749,7 @@ export default function MarketIntelligencePage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="h-5 w-5" />
-              Asqin BV Virality Prediction (STEPPS)
+              Virality Prediction (STEPPS)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -710,12 +830,7 @@ export default function MarketIntelligencePage() {
                     <div className="mt-4">
                       <p className="text-sm text-muted-foreground">AI Recommendations</p>
                       <ul className="mt-2 space-y-2">
-                        {analysis.ai_recommendations.map((rec, index) => (
-                          <li key={index} className="text-sm flex items-center gap-2">
-                            <AlertCircle className="h-4 w-4 text-primary" />
-                            {rec}
-                          </li>
-                        ))}
+                        {renderAIRecommendations(analysis.ai_recommendations)}
                       </ul>
                     </div>
                   </div>

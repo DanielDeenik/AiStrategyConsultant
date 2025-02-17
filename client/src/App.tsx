@@ -7,10 +7,6 @@ import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import MarketIntelligencePage from "@/pages/market-intelligence";
-import AsqinInsightsPage from "@/pages/market-intelligence/asqin";
-import ViralityPredictionPage from "@/pages/market-intelligence/virality";
-import InvestmentSignalsPage from "@/pages/market-intelligence/investment";
-import TrendForecastingPage from "@/pages/market-intelligence/trends";
 import AIStrategyPage from "@/pages/ai-strategy";
 import ExecutionAutomationPage from "@/pages/execution-automation";
 import DecisionSimulationsPage from "@/pages/decision-simulations";
@@ -22,10 +18,6 @@ function Router() {
     <Switch>
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/market-intelligence" component={MarketIntelligencePage} />
-      <ProtectedRoute path="/market-intelligence/asqin" component={AsqinInsightsPage} />
-      <ProtectedRoute path="/market-intelligence/virality" component={ViralityPredictionPage} />
-      <ProtectedRoute path="/market-intelligence/investment" component={InvestmentSignalsPage} />
-      <ProtectedRoute path="/market-intelligence/trends" component={TrendForecastingPage} />
       <ProtectedRoute path="/ai-strategy" component={AIStrategyPage} />
       <ProtectedRoute path="/execution" component={ExecutionAutomationPage} />
       <ProtectedRoute path="/simulations" component={DecisionSimulationsPage} />
