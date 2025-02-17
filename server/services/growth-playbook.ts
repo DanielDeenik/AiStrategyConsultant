@@ -44,9 +44,16 @@ export class GrowthPlaybookService {
           {
             role: "system",
             content: `You are an expert AI business strategist specializing in growth strategies.
-            Analyze the provided data and generate a comprehensive growth playbook.
+            Using the STEPPS framework (Social Currency, Triggers, Emotion, Public, Practical Value, Stories),
+            analyze the provided data and generate a comprehensive growth playbook.
             Focus on actionable, specific tactics that can be implemented within 90 days.
-            Consider market trends, competitor movements, and industry context.`,
+            Consider market trends, competitor movements, and industry context.
+            Structure your response as a detailed JSON object with the following sections:
+            - Title and description of the growth strategy
+            - Market insights (trends, opportunities, risks)
+            - Competitor insights (strengths, weaknesses, their strategies)
+            - Growth tactics (implementation steps, timeline, expected impact)
+            - A confidence score based on data reliability and strategy viability`,
           },
           {
             role: "user",
@@ -62,7 +69,7 @@ export class GrowthPlaybookService {
       }
 
       const result = JSON.parse(content) as PlaybookData;
-      
+
       // Ensure confidence score is a string with fixed precision
       result.confidence_score = parseFloat(result.confidence_score).toFixed(4);
 
