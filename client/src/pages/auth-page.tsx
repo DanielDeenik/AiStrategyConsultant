@@ -21,14 +21,21 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { insertUserSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
+import { z } from "zod";
+
+// Assuming insertUserSchema is a zod schema, extend it to include email validation.
+const updatedInsertUserSchema = insertUserSchema.extend({
+  email: z.string().email("Invalid email address"),
+});
 
 export default function AuthPage() {
   const [_, setLocation] = useLocation();
   const { loginMutation, registerMutation, user } = useAuth();
 
   const form = useForm({
-    resolver: zodResolver(insertUserSchema),
+    resolver: zodResolver(updatedInsertUserSchema),
     defaultValues: {
+      email: "",
       username: "",
       password: "",
     },
@@ -61,13 +68,27 @@ export default function AuthPage() {
                   onSubmit={form.handleSubmit((data) => {
                     const isLoginTab = document.querySelector('[data-state="active"][data-value="login"]') !== null;
                     if (isLoginTab) {
-                      loginMutation.mutate(data);
+                      const { email, password } = data;
+                      loginMutation.mutate({ email, password });
                     } else {
                       registerMutation.mutate(data);
                     }
                   })}
                   className="space-y-4"
                 >
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name="username"
