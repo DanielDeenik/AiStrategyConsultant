@@ -2,9 +2,28 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let errorMessage = res.statusText;
+    try {
+      const errorData = await res.json();
+      errorMessage = errorData.message || errorMessage;
+    } catch {
+      // If parsing JSON fails, use the status text
+    }
+    throw new Error(errorMessage);
   }
+}
+
+function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  const accessToken = localStorage.getItem("accessToken");
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  return headers;
 }
 
 export async function apiRequest(
@@ -12,21 +31,12 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const headers: Record<string, string> = {};
-  if (data) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  const accessToken = localStorage.getItem("accessToken");
-  if (accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
-  }
+  const headers = getAuthHeaders();
 
   const res = await fetch(url, {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
   });
 
   await throwIfResNotOk(res);
@@ -39,15 +49,10 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const headers: Record<string, string> = {};
-    const accessToken = localStorage.getItem("accessToken");
-    if (accessToken) {
-      headers["Authorization"] = `Bearer ${accessToken}`;
-    }
+    const headers = getAuthHeaders();
 
     const res = await fetch(queryKey[0] as string, {
       headers,
-      credentials: "include",
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

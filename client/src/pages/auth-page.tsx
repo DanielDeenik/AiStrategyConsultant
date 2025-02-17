@@ -22,22 +22,39 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { insertUserSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { z } from "zod";
+import { useState } from "react";
 
-// Assuming insertUserSchema is a zod schema, extend it to include email validation.
-const updatedInsertUserSchema = insertUserSchema.extend({
+// Login schema only needs email and password
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+// Registration schema needs all fields
+const registerSchema = insertUserSchema.extend({
   email: z.string().email("Invalid email address"),
 });
 
 export default function AuthPage() {
   const [_, setLocation] = useLocation();
   const { loginMutation, registerMutation, user } = useAuth();
+  const [isLoginTab, setIsLoginTab] = useState(true);
 
-  const form = useForm({
-    resolver: zodResolver(updatedInsertUserSchema),
+  const loginForm = useForm({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const registerForm = useForm({
+    resolver: zodResolver(registerSchema),
     defaultValues: {
       email: "",
       username: "",
       password: "",
+      role: "admin", // Fixed as admin for this application
     },
   });
 
@@ -57,84 +74,114 @@ export default function AuthPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login">
+            <Tabs defaultValue="login" onValueChange={(value) => setIsLoginTab(value === "login")}>
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
 
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit((data) => {
-                    const isLoginTab = document.querySelector('[data-state="active"][data-value="login"]') !== null;
-                    if (isLoginTab) {
-                      const { email, password } = data;
-                      loginMutation.mutate({ email, password });
-                    } else {
-                      registerMutation.mutate(data);
-                    }
-                  })}
-                  className="space-y-4"
-                >
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Username</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <TabsContent value="login">
+              <TabsContent value="login">
+                <Form {...loginForm}>
+                  <form
+                    onSubmit={loginForm.handleSubmit((data) => {
+                      loginMutation.mutate(data);
+                    })}
+                    className="space-y-4"
+                  >
+                    <FormField
+                      control={loginForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input type="email" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={loginForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <Button
                       type="submit"
                       className="w-full"
                       disabled={loginMutation.isPending}
                     >
-                      Sign In
+                      {loginMutation.isPending ? "Signing in..." : "Sign In"}
                     </Button>
-                  </TabsContent>
-                  <TabsContent value="register">
+                  </form>
+                </Form>
+              </TabsContent>
+
+              <TabsContent value="register">
+                <Form {...registerForm}>
+                  <form
+                    onSubmit={registerForm.handleSubmit((data) => {
+                      registerMutation.mutate(data);
+                    })}
+                    className="space-y-4"
+                  >
+                    <FormField
+                      control={registerForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input type="email" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="username"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Username</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={registerForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <Button
                       type="submit"
                       className="w-full"
                       disabled={registerMutation.isPending}
                     >
-                      Create Account
+                      {registerMutation.isPending ? "Creating Account..." : "Create Account"}
                     </Button>
-                  </TabsContent>
-                </form>
-              </Form>
+                  </form>
+                </Form>
+              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>

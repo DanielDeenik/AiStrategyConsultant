@@ -42,6 +42,10 @@ export function setupAuth(app: Express) {
     try {
       const { email, username, password } = req.body;
 
+      if (!email || !username || !password) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
       // Check if any admin exists
       const existingAdmin = await storage.getUserByEmail(email);
       if (existingAdmin) {
@@ -60,7 +64,7 @@ export function setupAuth(app: Express) {
       const refreshToken = await createRefreshToken(user.id, user.role);
 
       res.status(201).json({
-        user: { id: user.id, email: user.email, role: user.role },
+        user: { id: user.id, email: user.email, username: user.username, role: user.role },
         accessToken,
         refreshToken
       });
@@ -73,6 +77,11 @@ export function setupAuth(app: Express) {
   app.post("/api/admin/login", loginLimiter, async (req, res) => {
     try {
       const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
       const user = await storage.getUserByEmail(email);
 
       if (!user || !(await comparePasswords(password, user.password))) {
@@ -87,7 +96,7 @@ export function setupAuth(app: Express) {
       const refreshToken = await createRefreshToken(user.id, user.role);
 
       res.json({ 
-        user: { id: user.id, email: user.email, role: user.role },
+        user: { id: user.id, email: user.email, username: user.username, role: user.role },
         accessToken,
         refreshToken
       });
