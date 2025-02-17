@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import cors from "cors";
 
 const app = express();
+app.set('trust proxy', 1); // Add this line to fix express-rate-limit
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
