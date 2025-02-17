@@ -79,6 +79,18 @@ export const competitiveAnalysis = pgTable("competitive_analysis", {
   analyzed_at: timestamp("analyzed_at").defaultNow(),
 });
 
+export const strategyConfidence = pgTable("strategy_confidence", {
+  id: serial("id").primaryKey(),
+  strategy_id: integer("strategy_id").references(() => strategies.id).notNull(),
+  confidence_score: decimal("confidence_score").notNull(),
+  market_alignment: decimal("market_alignment").notNull(),
+  competitor_benchmark: decimal("competitor_benchmark").notNull(),
+  historical_success: decimal("historical_success").notNull(),
+  ai_recommendations: json("ai_recommendations").notNull(),
+  calculated_at: timestamp("calculated_at").defaultNow(),
+});
+
+
 // New table for growth playbooks
 export const growthPlaybooks = pgTable("growth_playbooks", {
   id: serial("id").primaryKey(),
@@ -94,18 +106,6 @@ export const growthPlaybooks = pgTable("growth_playbooks", {
   user_id: integer("user_id").references(() => users.id).notNull(),
 });
 
-export const strategyConfidence = pgTable("strategy_confidence", {
-  id: serial("id").primaryKey(),
-  strategy_id: integer("strategy_id").references(() => strategies.id).notNull(),
-  confidence_score: decimal("confidence_score").notNull(),
-  market_alignment: decimal("market_alignment").notNull(),
-  competitor_benchmark: decimal("competitor_benchmark").notNull(),
-  historical_success: decimal("historical_success").notNull(),
-  ai_recommendations: json("ai_recommendations").notNull(),
-  calculated_at: timestamp("calculated_at").defaultNow(),
-});
-
-// New tables for execution automation
 export const automationTasks = pgTable("automation_tasks", {
   id: serial("id").primaryKey(),
   strategy_id: integer("strategy_id").references(() => strategies.id).notNull(),
