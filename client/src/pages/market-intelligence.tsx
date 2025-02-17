@@ -160,6 +160,8 @@ export default function MarketIntelligencePage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          // Add auth headers from current session
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({ urls: [url] }),
       });
