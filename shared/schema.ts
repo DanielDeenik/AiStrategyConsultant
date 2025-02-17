@@ -4,8 +4,20 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  role: text("role", { enum: ["admin", "user"] }).default("user").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const sessions = pgTable("sessions", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id").references(() => users.id).notNull(),
+  refresh_token: text("refresh_token").notNull(),
+  expires_at: timestamp("expires_at").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
 });
 
 export const strategies = pgTable("strategies", {
@@ -28,8 +40,10 @@ export const competitors = pgTable("competitors", {
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
+  email: true,
   username: true,
   password: true,
+  role: true,
 });
 
 export const insertStrategySchema = createInsertSchema(strategies).pick({
@@ -52,3 +66,4 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Strategy = typeof strategies.$inferSelect;
 export type Competitor = typeof competitors.$inferSelect;
+export type Session = typeof sessions.$inferSelect;

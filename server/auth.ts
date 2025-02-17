@@ -1,19 +1,20 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
-import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import { generateTokens, verifyRefreshToken, requireAuth, requireAdmin, createRefreshToken } from "./jwt";
+import rateLimit from "express-rate-limit";
+
+const scryptAsync = promisify(scrypt);
 
 declare global {
   namespace Express {
     interface User extends SelectUser {}
   }
 }
-
-const scryptAsync = promisify(scrypt);
 
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -29,81 +30,79 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "dev_secret_123",
-    resave: false,
-    saveUninitialized: false,
-    store: storage.sessionStore,
-    cookie: {
-      secure: app.get("env") === "production",
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    },
-  };
+  // Rate limiting middleware
+  const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // Limit each IP to 5 login attempts per window
+    message: "Too many login attempts, please try again later"
+  });
 
-  app.set("trust proxy", 1);
-  app.use(session(sessionSettings));
-  app.use(passport.initialize());
-  app.use(passport.session());
-
-  passport.use(
-    new LocalStrategy(async (username, password, done) => {
-      try {
-        const user = await storage.getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
-          return done(null, false);
-        }
-        return done(null, user);
-      } catch (err) {
-        return done(err);
-      }
-    }),
-  );
-
-  passport.serializeUser((user, done) => done(null, user.id));
-  passport.deserializeUser(async (id: number, done) => {
+  app.post("/api/admin/login", loginLimiter, async (req, res) => {
     try {
-      const user = await storage.getUser(id);
-      done(null, user);
-    } catch (err) {
-      done(err);
+      const { email, password } = req.body;
+      const user = await storage.getUserByEmail(email);
+
+      if (!user || !(await comparePasswords(password, user.password))) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      if (user.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { accessToken } = generateTokens(user.id, user.role);
+      const refreshToken = await createRefreshToken(user.id, user.role);
+
+      res.json({ 
+        user: { id: user.id, email: user.email, role: user.role },
+        accessToken,
+        refreshToken
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 
-  app.post("/api/register", async (req, res, next) => {
+  app.post("/api/admin/logout", requireAuth, async (req, res) => {
     try {
-      const existingUser = await storage.getUserByUsername(req.body.username);
-      if (existingUser) {
-        return res.status(400).send("Username already exists");
+      const refreshToken = req.body.refreshToken;
+      if (refreshToken) {
+        await storage.deleteSession(refreshToken);
       }
-
-      const user = await storage.createUser({
-        ...req.body,
-        password: await hashPassword(req.body.password),
-      });
-
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.status(201).json(user);
-      });
-    } catch (err) {
-      next(err);
-    }
-  });
-
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
-  });
-
-  app.post("/api/logout", (req, res, next) => {
-    req.logout((err) => {
-      if (err) return next(err);
       res.sendStatus(200);
-    });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
   });
 
-  app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    res.json(req.user);
+  app.post("/api/admin/refresh", async (req, res) => {
+    try {
+      const { refreshToken } = req.body;
+      if (!refreshToken) {
+        return res.status(401).json({ message: "Refresh token required" });
+      }
+
+      const session = await storage.getValidSession(refreshToken);
+      if (!session) {
+        return res.status(401).json({ message: "Invalid refresh token" });
+      }
+
+      const payload = await verifyRefreshToken(refreshToken);
+      const user = await storage.getUser(payload.userId);
+
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const { accessToken } = generateTokens(user.id, user.role);
+      res.json({ accessToken });
+    } catch (error) {
+      res.status(401).json({ message: "Invalid refresh token" });
+    }
+  });
+
+  // Example protected admin route
+  app.get("/api/admin/protected", requireAdmin, (req, res) => {
+    res.json({ message: "Admin access granted", user: req.user });
   });
 }
