@@ -70,6 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.createViralityScore({
         ...viralityMetrics,
         strategy_id: req.body.strategy_id,
+        created_at: new Date(),
       });
 
       res.json(result);
@@ -95,6 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...competitiveMetrics,
         strategy_id: req.body.strategy_id,
         competitor_id: req.body.competitor_id,
+        analyzed_at: new Date(),
       });
 
       res.json(result);
@@ -170,9 +172,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         historicalData
       );
 
+      // Convert numeric values to strings for database storage
       const result = await storage.createStrategyConfidence({
         ...confidenceMetrics,
         strategy_id: strategyId,
+        confidence_score: confidenceMetrics.confidence_score.toString(),
+        market_alignment: confidenceMetrics.market_alignment.toString(),
+        competitor_benchmark: confidenceMetrics.competitor_benchmark.toString(),
+        historical_success: confidenceMetrics.historical_success.toString(),
         calculated_at: new Date(),
       });
 

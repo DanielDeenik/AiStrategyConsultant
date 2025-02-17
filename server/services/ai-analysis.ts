@@ -5,22 +5,22 @@ import { ViralityScore, CompetitiveAnalysis } from "@shared/schema";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 interface ViralityMetrics {
-  social_currency_score: number;
-  trigger_score: number;
-  emotion_score: number;
-  public_score: number;
-  practical_value_score: number;
-  story_score: number;
-  total_score: number;
-  confidence: number;
+  social_currency_score: string;
+  trigger_score: string;
+  emotion_score: string;
+  public_score: string;
+  practical_value_score: string;
+  story_score: string;
+  total_score: string;
+  confidence: string;
   ai_insights: Record<string, any>;
 }
 
 interface CompetitiveMetrics {
-  market_share: number;
-  relative_strength: number;
+  market_share: string;
+  relative_strength: string;
   threat_level: number;
-  opportunity_score: number;
+  opportunity_score: string;
   ai_recommendations: Record<string, any>;
 }
 
@@ -64,20 +64,18 @@ export class AIAnalysisService {
         insights: Record<string, any>;
       };
 
-      // Normalize and validate scores
-      const scores = {
-        social_currency_score: Math.min(1, Math.max(0, result.social_currency_score)),
-        trigger_score: Math.min(1, Math.max(0, result.trigger_score)),
-        emotion_score: Math.min(1, Math.max(0, result.emotion_score)),
-        public_score: Math.min(1, Math.max(0, result.public_score)),
-        practical_value_score: Math.min(1, Math.max(0, result.practical_value_score)),
-        story_score: Math.min(1, Math.max(0, result.story_score)),
-        total_score: Math.min(1, Math.max(0, result.total_score)),
-        confidence: Math.min(1, Math.max(0, result.confidence)),
+      // Convert numeric scores to strings with fixed precision
+      return {
+        social_currency_score: result.social_currency_score.toFixed(4),
+        trigger_score: result.trigger_score.toFixed(4),
+        emotion_score: result.emotion_score.toFixed(4),
+        public_score: result.public_score.toFixed(4),
+        practical_value_score: result.practical_value_score.toFixed(4),
+        story_score: result.story_score.toFixed(4),
+        total_score: result.total_score.toFixed(4),
+        confidence: result.confidence.toFixed(4),
         ai_insights: result.insights,
       };
-
-      return scores;
     } catch (error) {
       console.error("Error analyzing virality:", error);
       throw new Error("Failed to analyze virality potential");
@@ -121,10 +119,10 @@ export class AIAnalysisService {
       };
 
       return {
-        market_share: Math.min(1, Math.max(0, result.market_share)),
-        relative_strength: Math.min(1, Math.max(0, result.relative_strength)),
+        market_share: result.market_share.toFixed(4),
+        relative_strength: result.relative_strength.toFixed(4),
         threat_level: Math.min(5, Math.max(1, result.threat_level)),
-        opportunity_score: Math.min(1, Math.max(0, result.opportunity_score)),
+        opportunity_score: result.opportunity_score.toFixed(4),
         ai_recommendations: result.recommendations,
       };
     } catch (error) {
