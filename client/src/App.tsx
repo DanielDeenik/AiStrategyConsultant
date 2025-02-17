@@ -10,6 +10,7 @@ import MarketIntelligencePage from "@/pages/market-intelligence";
 import AIStrategyPage from "@/pages/ai-strategy";
 import ExecutionAutomationPage from "@/pages/execution-automation";
 import DecisionSimulationsPage from "@/pages/decision-simulations";
+import APIIntegrationsPage from "@/pages/api-integrations";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -20,7 +21,7 @@ function Router() {
       <ProtectedRoute path="/ai-strategy" component={AIStrategyPage} />
       <ProtectedRoute path="/execution" component={ExecutionAutomationPage} />
       <ProtectedRoute path="/simulations" component={DecisionSimulationsPage} />
-      <ProtectedRoute path="/integrations" component={() => <div>API Integrations</div>} />
+      <ProtectedRoute path="/integrations" component={APIIntegrationsPage} />
       <ProtectedRoute path="/settings" component={() => <div>Settings</div>} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />

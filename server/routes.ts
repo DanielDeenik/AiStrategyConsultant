@@ -10,6 +10,7 @@ import { strategyConfidenceService } from "./services/strategy-confidence";
 import { growthPlaybookService } from "./services/growth-playbook";
 import { executionAutomationService } from "./services/execution-automation";
 import { decisionSimulationService } from "./services/decision-simulation";
+import { randomBytes } from "crypto";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -459,6 +460,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch scenarios" });
     }
   });
+
+  //NEW API Key routes
+  app.get("/api/keys", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const keys = await storage.getApiKeys(req.user.id);
+      res.json(keys);
+    } catch (error) {
+      console.error("Error fetching API keys:", error);
+      res.status(500).json({ message: "Failed to fetch API keys" });
+    }
+  });
+
+  app.post("/api/keys", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { name, scopes } = req.body;
+      const key = `sk_${randomBytes(32).toString("hex")}`;
+
+      const apiKey = await storage.createApiKey({
+        user_id: req.user.id,
+        key,
+        name,
+        scopes,
+        expires_at: null, // Optional: Set an expiration date if needed
+      });
+
+      res.json({ ...apiKey, key }); // Only return the full key on creation
+    } catch (error) {
+      console.error("Error generating API key:", error);
+      res.status(500).json({ message: "Failed to generate API key" });
+    }
+  });
+
+  app.delete("/api/keys/:keyId", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const keyId = parseInt(req.params.keyId);
+      await storage.revokeApiKey(keyId);
+      res.sendStatus(200);
+    } catch (error) {
+      console.error("Error revoking API key:", error);
+      res.status(500).json({ message: "Failed to revoke API key" });
+    }
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;

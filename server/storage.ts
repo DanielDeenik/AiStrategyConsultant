@@ -35,6 +35,8 @@ import {
   type SimulationScenario,
   type InsertSimulationScenario,
 } from "@shared/schema";
+import { type ApiKey, type InsertApiKey, apiKeys } from "@shared/schema";
+
 
 const PostgresSessionStore = connectPg(session);
 
@@ -334,6 +336,36 @@ export class DatabaseStorage implements IStorage {
       .from(simulationScenarios)
       .where(eq(simulationScenarios.simulation_id, simulationId))
       .orderBy(simulationScenarios.created_at);
+  }
+
+  async createApiKey(apiKey: InsertApiKey): Promise<ApiKey> {
+    const [newKey] = await db.insert(apiKeys).values(apiKey).returning();
+    return newKey;
+  }
+
+  async getApiKeys(userId: number): Promise<ApiKey[]> {
+    return db
+      .select()
+      .from(apiKeys)
+      .where(eq(apiKeys.user_id, userId))
+      .where(eq(apiKeys.is_active, true))
+      .orderBy(apiKeys.created_at);
+  }
+
+  async revokeApiKey(keyId: number): Promise<void> {
+    await db
+      .update(apiKeys)
+      .set({ is_active: false })
+      .where(eq(apiKeys.id, keyId));
+  }
+
+  async validateApiKey(key: string): Promise<ApiKey | undefined> {
+    const [apiKey] = await db
+      .select()
+      .from(apiKeys)
+      .where(eq(apiKeys.key, key))
+      .where(eq(apiKeys.is_active, true));
+    return apiKey;
   }
 }
 
