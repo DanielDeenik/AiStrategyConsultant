@@ -13,6 +13,27 @@ import { decisionSimulationService } from "./services/decision-simulation";
 import { randomBytes } from "crypto";
 import { presuasionAnalysisService } from "./services/pre-suasion-analysis";
 import { marketTrendsService } from "./services/market-trends";
+import multer from "multer";
+import { extname } from "path";
+import * as openai from 'openai';
+
+
+// Configure multer for file upload
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.pdf', '.csv', '.json', '.xlsx', '.xls'];
+    const ext = extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  },
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -658,6 +679,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating trend insights:", error);
       res.status(500).json({ message: "Failed to generate trend insights" });
+    }
+  });
+
+  app.post("/api/market-intelligence/upload", requireAuth, upload.array('files'), async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      if (!req.files || !Array.isArray(req.files)) {
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      const files = req.files as Express.Multer.File[];
+      const results = [];
+
+      for (const file of files) {
+        const fileType = extname(file.originalname).toLowerCase();
+        const fileContent = file.buffer.toString('utf-8');
+
+        // Send to OpenAI for analysis
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: "Analyze this market data file and extract key insights. Focus on market trends, competitor movements, and strategic implications. Output in JSON format with the following structure: { insights: string[], marketTrends: string[], competitorMoves: string[], strategicImplications: string[] }",
+            },
+            {
+              role: "user",
+              content: `File Type: ${fileType}\nContent: ${fileContent}`,
+            },
+          ],
+          response_format: { type: "json_object" },
+        });
+
+        if (!response.choices[0].message.content) {
+          throw new Error("No content in OpenAI response");
+        }
+
+        const analysisResult = JSON.parse(response.choices[0].message.content);
+
+        results.push({
+          filename: file.originalname,
+          fileType,
+          analysis: analysisResult,
+          uploadedAt: new Date(),
+        });
+      }
+
+      res.json(results);
+    } catch (error) {
+      console.error("Error processing uploaded files:", error);
+      res.status(500).json({ message: "Failed to process uploaded files" });
     }
   });
 

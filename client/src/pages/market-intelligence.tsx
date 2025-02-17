@@ -35,8 +35,27 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+
+interface FileAnalysis {
+  filename: string;
+  fileType: string;
+  analysis: {
+    insights: string[];
+    marketTrends: string[];
+    competitorMoves: string[];
+    strategicImplications: string[];
+  };
+  uploadedAt: string;
+}
 
 export default function MarketIntelligencePage() {
+  const { toast } = useToast();
+  const [uploadedFiles, setUploadedFiles] = useState<FileAnalysis[]>([]);
+
   const { data: presuasionScores, isLoading: loadingPresuasion } = useQuery<PresuasionScore[]>({
     queryKey: ["/api/market-intelligence/pre-suasion"],
   });
@@ -54,6 +73,47 @@ export default function MarketIntelligencePage() {
   });
 
   const isLoading = loadingPresuasion || loadingVirality || loadingCompetitive || loadingTrends;
+
+  const uploadMutation = useMutation({
+    mutationFn: async (files: FileList) => {
+      const formData = new FormData();
+      Array.from(files).forEach((file) => {
+        formData.append('files', file);
+      });
+
+      const response = await fetch('/api/market-intelligence/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data: FileAnalysis[]) => {
+      setUploadedFiles(data);
+      toast({
+        title: "Files uploaded successfully",
+        description: "AI analysis complete. View insights below.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      uploadMutation.mutate(files);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -88,8 +148,10 @@ export default function MarketIntelligencePage() {
                     type="file"
                     className="hidden"
                     id="file-upload"
-                    accept=".csv,.json,.xlsx,.pdf"
+                    accept=".csv,.json,.xlsx,.xls,.pdf"
                     multiple
+                    onChange={handleFileUpload}
+                    disabled={uploadMutation.isPending}
                   />
                   <Label
                     htmlFor="file-upload"
@@ -97,7 +159,9 @@ export default function MarketIntelligencePage() {
                   >
                     <Upload className="h-8 w-8 text-muted-foreground mb-2" />
                     <span className="text-sm font-medium">
-                      Drop files here or click to upload
+                      {uploadMutation.isPending
+                        ? "Analyzing files..."
+                        : "Drop files here or click to upload"}
                     </span>
                     <span className="text-xs text-muted-foreground mt-1">
                       Supports CSV, JSON, Excel, and PDF
@@ -106,10 +170,51 @@ export default function MarketIntelligencePage() {
                 </div>
               </div>
               <div className="bg-muted/50 p-4 rounded-lg">
-                <h4 className="font-medium mb-2">Uploaded Files</h4>
-                <p className="text-sm text-muted-foreground">
-                  No files uploaded yet
-                </p>
+                <h4 className="font-medium mb-2">Uploaded Files & Analysis</h4>
+                {uploadedFiles.length > 0 ? (
+                  <div className="space-y-4">
+                    {uploadedFiles.map((file, index) => (
+                      <div key={index} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h5 className="font-medium">{file.filename}</h5>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(file.uploadedAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="grid gap-4 mt-2">
+                          <div>
+                            <h6 className="text-sm font-medium mb-1">Key Insights</h6>
+                            <ul className="list-disc list-inside text-sm space-y-1">
+                              {file.analysis.insights.map((insight, i) => (
+                                <li key={i} className="text-muted-foreground">{insight}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <h6 className="text-sm font-medium mb-1">Market Trends</h6>
+                            <ul className="list-disc list-inside text-sm space-y-1">
+                              {file.analysis.marketTrends.map((trend, i) => (
+                                <li key={i} className="text-muted-foreground">{trend}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <h6 className="text-sm font-medium mb-1">Strategic Implications</h6>
+                            <ul className="list-disc list-inside text-sm space-y-1">
+                              {file.analysis.strategicImplications.map((implication, i) => (
+                                <li key={i} className="text-muted-foreground">{implication}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No files uploaded yet
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
