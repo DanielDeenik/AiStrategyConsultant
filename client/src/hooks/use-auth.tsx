@@ -7,7 +7,6 @@ import {
 import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import React from 'react'; // Add explicit React import
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -29,7 +28,15 @@ type AuthResponse = {
   refreshToken: string;
 };
 
-const AuthContext = createContext<AuthContextType | null>(null);
+// Create context with a default value matching the type
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  isLoading: false,
+  error: null,
+  loginMutation: {} as UseMutationResult<AuthResponse, Error, LoginData>,
+  logoutMutation: {} as UseMutationResult<void, Error, void>,
+  registerMutation: {} as UseMutationResult<AuthResponse, Error, InsertUser>,
+});
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
@@ -100,17 +107,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  const value = React.useMemo(() => ({
-    user: user ?? null,
-    isLoading,
-    error,
-    loginMutation,
-    logoutMutation,
-    registerMutation,
-  }), [user, isLoading, error, loginMutation, logoutMutation, registerMutation]);
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user: user ?? null,
+        isLoading,
+        error,
+        loginMutation,
+        logoutMutation,
+        registerMutation,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
