@@ -1,65 +1,55 @@
 import { IStorage } from "./types";
-import { InsertUser, User, Strategy, Competitor } from "@shared/schema";
+import { InsertUser, User, Strategy, Competitor, users, strategies, competitors } from "@shared/schema";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private strategies: Map<number, Strategy>;
-  private competitors: Map<number, Competitor>;
+export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
-  currentId: number;
 
   constructor() {
-    this.users = new Map();
-    this.strategies = new Map();
-    this.competitors = new Map();
-    this.currentId = 1;
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
     });
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentId++;
-    const user = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
   async getStrategies(userId: number): Promise<Strategy[]> {
-    return Array.from(this.strategies.values()).filter(s => s.user_id === userId);
+    return db.select().from(strategies).where(eq(strategies.user_id, userId));
   }
 
   async createStrategy(strategy: Omit<Strategy, "id">): Promise<Strategy> {
-    const id = this.currentId++;
-    const newStrategy = { ...strategy, id };
-    this.strategies.set(id, newStrategy);
+    const [newStrategy] = await db.insert(strategies).values(strategy).returning();
     return newStrategy;
   }
 
   async getCompetitors(userId: number): Promise<Competitor[]> {
-    return Array.from(this.competitors.values()).filter(c => c.user_id === userId);
+    return db.select().from(competitors).where(eq(competitors.user_id, userId));
   }
 
   async createCompetitor(competitor: Omit<Competitor, "id">): Promise<Competitor> {
-    const id = this.currentId++;
-    const newCompetitor = { ...competitor, id };
-    this.competitors.set(id, newCompetitor);
+    const [newCompetitor] = await db.insert(competitors).values(competitor).returning();
     return newCompetitor;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
