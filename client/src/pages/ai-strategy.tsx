@@ -1,40 +1,47 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Loader2, BookOpen, TrendingUp, Calendar as CalendarIcon } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Loader2, BookOpen, TrendingUp, Shield, Zap, Target, LineChart } from "lucide-react";
 import { type GrowthPlaybook } from "@shared/schema";
 import { useState } from "react";
-import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function AIStrategyPage() {
-  const [selectedDate, setSelectedDate] = useState<Date>();
   const { toast } = useToast();
-  
+  const queryClient = useQueryClient();
+
   const { data: playbooks, isLoading: loadingPlaybooks } = useQuery<GrowthPlaybook[]>({
     queryKey: ["/api/strategy/scheduled-playbooks"],
   });
 
-  const schedulePlaybook = async (strategyId: number, date: Date) => {
-    try {
-      await apiRequest("POST", "/api/strategy/schedule-playbook", {
-        strategyId,
-        scheduledFor: date.toISOString(),
+  const generatePlaybookMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/strategy/growth-playbook", {
+        strategy: "AI-powered growth strategy",
+        marketData: "Current market conditions",
+        competitorData: "Competitor analysis",
+        industryContext: "Industry trends",
+        strategyId: 1,
       });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/strategy/scheduled-playbooks"] });
       toast({
         title: "Success",
-        description: "Playbook generation scheduled successfully",
+        description: "AI Strategy playbook generated successfully",
       });
-    } catch (error) {
+    },
+    onError: () => {
       toast({
         title: "Error",
-        description: "Failed to schedule playbook generation",
+        description: "Failed to generate AI strategy playbook",
         variant: "destructive",
       });
-    }
-  };
+    },
+  });
 
   if (loadingPlaybooks) {
     return (
@@ -46,85 +53,87 @@ export default function AIStrategyPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold mb-8">AI Strategy</h1>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">AI Strategy Execution Hub</h1>
+          <p className="text-muted-foreground mt-2">
+            Data-Driven Decision Intelligence for Growth & Market Dominance
+          </p>
+        </div>
+        <Button 
+          size="lg"
+          onClick={() => generatePlaybookMutation.mutate()}
+          disabled={generatePlaybookMutation.isPending}
+        >
+          {generatePlaybookMutation.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Zap className="mr-2 h-4 w-4" />
+          )}
+          Generate AI Strategy
+        </Button>
+      </div>
 
-      {/* Growth Playbooks Section */}
+      {/* KPI Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Strategy Confidence</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-2xl font-bold">87%</p>
+                <Progress value={87} className="w-[60px]" />
+              </div>
+              <Shield className="h-8 w-8 text-primary opacity-75" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Competitive Position</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-2xl font-bold">Market Leader</p>
+                <p className="text-xs text-muted-foreground">4 competitors tracked</p>
+              </div>
+              <Target className="h-8 w-8 text-primary opacity-75" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Growth Trajectory</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-2xl font-bold">+34%</p>
+                <p className="text-xs text-muted-foreground">Quarter over Quarter</p>
+              </div>
+              <LineChart className="h-8 w-8 text-primary opacity-75" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* AI Strategy Playbooks */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
-            Growth Playbooks
+            AI-Generated Strategy Playbooks
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* Schedule New Playbook */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Schedule New Playbook</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  className="rounded-md border"
-                />
-                <Button
-                  onClick={() => selectedDate && schedulePlaybook(1, selectedDate)}
-                  disabled={!selectedDate}
-                  className="w-full"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  Schedule Generation
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Scheduled Playbooks */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Scheduled Playbooks</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {playbooks && playbooks.length > 0 ? (
-                  <div className="space-y-4">
-                    {playbooks.map((playbook) => (
-                      <div
-                        key={playbook.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
-                      >
-                        <div>
-                          <h3 className="font-semibold">{playbook.title}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Scheduled: {format(new Date(playbook.scheduled_for!), "PPp")}
-                          </p>
-                        </div>
-                        <TrendingUp className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No scheduled playbooks</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Generated Playbooks */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Generated Playbooks
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {playbooks && playbooks.length > 0 ? (
-            <div className="space-y-4">
-              {playbooks.map((playbook) => (
+          <div className="space-y-6">
+            {playbooks && playbooks.length > 0 ? (
+              playbooks.map((playbook) => (
                 <Card key={playbook.id}>
                   <CardHeader>
                     <CardTitle>{playbook.title}</CardTitle>
@@ -141,7 +150,7 @@ export default function AIStrategyPage() {
                         </pre>
                       </div>
                       <div>
-                        <h4 className="font-semibold mb-2">Competitor Insights</h4>
+                        <h4 className="font-semibold mb-2">Competitive Analysis</h4>
                         <pre className="text-sm bg-muted p-2 rounded-md">
                           {JSON.stringify(playbook.competitor_insights, null, 2)}
                         </pre>
@@ -155,11 +164,65 @@ export default function AIStrategyPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                  No strategy playbooks generated yet. Click the button above to create one.
+                </p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Competitive Intelligence */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Market & Competitive Intelligence
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h3 className="font-semibold">Market Opportunities</h3>
+              <ul className="space-y-2">
+                <li className="flex items-center text-sm">
+                  <div className="w-2 h-2 rounded-full bg-green-500 mr-2" />
+                  Blockchain-based compliance tools (+34% growth potential)
+                </li>
+                <li className="flex items-center text-sm">
+                  <div className="w-2 h-2 rounded-full bg-yellow-500 mr-2" />
+                  AI-driven risk assessment (emerging market)
+                </li>
+                <li className="flex items-center text-sm">
+                  <div className="w-2 h-2 rounded-full bg-red-500 mr-2" />
+                  Traditional compliance frameworks (declining)
+                </li>
+              </ul>
             </div>
-          ) : (
-            <p className="text-muted-foreground">No generated playbooks available</p>
-          )}
+
+            <div className="space-y-4">
+              <h3 className="font-semibold">Competitor Movements</h3>
+              <ul className="space-y-2">
+                <li className="flex items-center text-sm">
+                  <Zap className="h-4 w-4 text-primary mr-2" />
+                  CompetitorA launched new AI features
+                </li>
+                <li className="flex items-center text-sm">
+                  <Target className="h-4 w-4 text-primary mr-2" />
+                  CompetitorB expanding to new markets
+                </li>
+                <li className="flex items-center text-sm">
+                  <Shield className="h-4 w-4 text-primary mr-2" />
+                  CompetitorC acquired regulatory tech startup
+                </li>
+              </ul>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
