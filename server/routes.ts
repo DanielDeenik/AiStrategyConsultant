@@ -11,6 +11,7 @@ import { growthPlaybookService } from "./services/growth-playbook";
 import { executionAutomationService } from "./services/execution-automation";
 import { decisionSimulationService } from "./services/decision-simulation";
 import { randomBytes } from "crypto";
+import { presuasionAnalysisService } from "./services/pre-suasion-analysis";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -512,6 +513,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+
+  // Pre-suasion Analysis Routes
+  app.post("/api/market-intelligence/pre-suasion", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { content, contentType, strategyId } = req.body;
+
+      const analysisResult = await presuasionAnalysisService.analyzeContent(
+        content,
+        contentType
+      );
+
+      const score = await storage.createPresuasionScore({
+        strategy_id: strategyId,
+        content_type: contentType,
+        content,
+        persuasion_score: analysisResult.persuasion_score.toString(),
+        behavioral_insights: analysisResult.behavioral_insights,
+        sentiment_analysis: analysisResult.sentiment_analysis,
+        conversion_probability: analysisResult.conversion_probability.toString(),
+        recommendations: analysisResult.recommendations,
+        user_id: req.user.id,
+      });
+
+      res.json(score);
+    } catch (error) {
+      console.error("Error analyzing pre-suasion:", error);
+      res.status(500).json({ message: "Failed to analyze pre-suasion" });
+    }
+  });
+
+  app.get("/api/market-intelligence/pre-suasion/:scoreId", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const scoreId = parseInt(req.params.scoreId);
+      const score = await storage.getPresuasionScore(scoreId);
+      if (!score) {
+        return res.status(404).json({ message: "Pre-suasion score not found" });
+      }
+      res.json(score);
+    } catch (error) {
+      console.error("Error fetching pre-suasion score:", error);
+      res.status(500).json({ message: "Failed to fetch pre-suasion score" });
+    }
+  });
+
+  app.post("/api/market-intelligence/ab-test", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { content, contentType, presuasionScoreId } = req.body;
+
+      const { variants, predictions } = await presuasionAnalysisService.generateABTestVariants(
+        content,
+        contentType
+      );
+
+      const results = await Promise.all(
+        Object.entries(predictions).map(([variant, engagementRate]) =>
+          storage.createABTestResult({
+            presuasion_score_id: presuasionScoreId,
+            variant,
+            engagement_rate: engagementRate.toString(),
+            conversion_rate: "0", // Initial value, to be updated with actual results
+            audience_response: {},
+            test_duration: 7, // Default 7-day test duration
+          })
+        )
+      );
+
+      res.json({ variants, predictions, results });
+    } catch (error) {
+      console.error("Error creating A/B test:", error);
+      res.status(500).json({ message: "Failed to create A/B test" });
+    }
+  });
+
+  app.get("/api/market-intelligence/ab-test/:scoreId", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const scoreId = parseInt(req.params.scoreId);
+      const results = await storage.getABTestResults(scoreId);
+      res.json(results);
+    } catch (error) {
+      console.error("Error fetching A/B test results:", error);
+      res.status(500).json({ message: "Failed to fetch A/B test results" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

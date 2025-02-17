@@ -36,6 +36,14 @@ import {
   type InsertSimulationScenario,
 } from "@shared/schema";
 import { type ApiKey, type InsertApiKey, apiKeys } from "@shared/schema";
+import {
+  presuasionScores,
+  abTestResults,
+  type PresuasionScore,
+  type InsertPresuasionScore,
+  type ABTestResult,
+  type InsertABTestResult,
+} from "@shared/schema";
 
 
 const PostgresSessionStore = connectPg(session);
@@ -366,6 +374,40 @@ export class DatabaseStorage implements IStorage {
       .where(eq(apiKeys.key, key))
       .where(eq(apiKeys.is_active, true));
     return apiKey;
+  }
+
+  async createPresuasionScore(score: InsertPresuasionScore): Promise<PresuasionScore> {
+    const [newScore] = await db.insert(presuasionScores).values(score).returning();
+    return newScore;
+  }
+
+  async getPresuasionScores(userId: number): Promise<PresuasionScore[]> {
+    return db
+      .select()
+      .from(presuasionScores)
+      .where(eq(presuasionScores.user_id, userId))
+      .orderBy(presuasionScores.created_at);
+  }
+
+  async getPresuasionScore(id: number): Promise<PresuasionScore | undefined> {
+    const [score] = await db
+      .select()
+      .from(presuasionScores)
+      .where(eq(presuasionScores.id, id));
+    return score;
+  }
+
+  async createABTestResult(result: InsertABTestResult): Promise<ABTestResult> {
+    const [newResult] = await db.insert(abTestResults).values(result).returning();
+    return newResult;
+  }
+
+  async getABTestResults(presuasionScoreId: number): Promise<ABTestResult[]> {
+    return db
+      .select()
+      .from(abTestResults)
+      .where(eq(abTestResults.presuasion_score_id, presuasionScoreId))
+      .orderBy(abTestResults.created_at);
   }
 }
 

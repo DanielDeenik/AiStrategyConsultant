@@ -319,6 +319,54 @@ export const insertSimulationScenarioSchema = createInsertSchema(simulationScena
   metrics: true,
 });
 
+// Add new tables for pre-suasion analytics
+export const presuasionScores = pgTable("presuasion_scores", {
+  id: serial("id").primaryKey(),
+  strategy_id: integer("strategy_id").references(() => strategies.id).notNull(),
+  content_type: text("content_type", { enum: ["text", "image", "video", "campaign"] }).notNull(),
+  content: text("content").notNull(),
+  persuasion_score: decimal("persuasion_score").notNull(),
+  behavioral_insights: json("behavioral_insights").notNull(),
+  sentiment_analysis: json("sentiment_analysis").notNull(),
+  conversion_probability: decimal("conversion_probability").notNull(),
+  recommendations: json("recommendations").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+  user_id: integer("user_id").references(() => users.id).notNull(),
+});
+
+export const abTestResults = pgTable("ab_test_results", {
+  id: serial("id").primaryKey(),
+  presuasion_score_id: integer("presuasion_score_id").references(() => presuasionScores.id).notNull(),
+  variant: text("variant").notNull(),
+  engagement_rate: decimal("engagement_rate").notNull(),
+  conversion_rate: decimal("conversion_rate").notNull(),
+  audience_response: json("audience_response").notNull(),
+  test_duration: integer("test_duration").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// Add schemas for inserting data
+export const insertPresuasionScoreSchema = createInsertSchema(presuasionScores).pick({
+  strategy_id: true,
+  content_type: true,
+  content: true,
+  persuasion_score: true,
+  behavioral_insights: true,
+  sentiment_analysis: true,
+  conversion_probability: true,
+  recommendations: true,
+  user_id: true,
+});
+
+export const insertABTestResultSchema = createInsertSchema(abTestResults).pick({
+  presuasion_score_id: true,
+  variant: true,
+  engagement_rate: true,
+  conversion_rate: true,
+  audience_response: true,
+  test_duration: true,
+});
+
 // Export types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -344,3 +392,7 @@ export type SimulationScenario = typeof simulationScenarios.$inferSelect;
 export type InsertSimulationScenario = z.infer<typeof insertSimulationScenarioSchema>;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+export type PresuasionScore = typeof presuasionScores.$inferSelect;
+export type InsertPresuasionScore = z.infer<typeof insertPresuasionScoreSchema>;
+export type ABTestResult = typeof abTestResults.$inferSelect;
+export type InsertABTestResult = z.infer<typeof insertABTestResultSchema>;
