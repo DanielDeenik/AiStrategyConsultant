@@ -217,6 +217,7 @@ export const insertCompetitorSchema = createInsertSchema(competitors).pick({
   user_id: true,
 });
 
+// Add schema for inserting virality scores
 export const insertViralityScoreSchema = createInsertSchema(viralityScores).pick({
   strategy_id: true,
   social_currency_score: true,
@@ -396,3 +397,6 @@ export type PresuasionScore = typeof presuasionScores.$inferSelect;
 export type InsertPresuasionScore = z.infer<typeof insertPresuasionScoreSchema>;
 export type ABTestResult = typeof abTestResults.$inferSelect;
 export type InsertABTestResult = z.infer<typeof insertABTestResultSchema>;
+export type InsertViralityScore = z.infer<typeof insertViralityScoreSchema>;
+export type InsertMarketTrend = z.infer<typeof insertMarketTrendSchema>;
+export type InsertCompetitiveAnalysis = z.infer<typeof insertCompetitiveAnalysisSchema>;
