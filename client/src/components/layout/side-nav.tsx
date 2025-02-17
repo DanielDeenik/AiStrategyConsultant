@@ -58,12 +58,12 @@ export function SideNav() {
         {navigation.map((item) => {
           const isActive = location === item.href;
           const Icon = item.icon;
-          
+
           return (
             <Link key={item.name} href={item.href}>
-              <a
+              <div
                 className={cn(
-                  "flex items-center px-2 py-2 text-sm font-medium rounded-md",
+                  "flex items-center px-2 py-2 text-sm font-medium rounded-md cursor-pointer",
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -71,7 +71,7 @@ export function SideNav() {
               >
                 <Icon className="mr-3 h-5 w-5" />
                 {item.name}
-              </a>
+              </div>
             </Link>
           );
         })}
@@ -80,10 +80,10 @@ export function SideNav() {
       {/* Bottom Section */}
       <div className="border-t p-4">
         <Link href="/settings">
-          <a className="flex items-center px-2 py-2 text-sm font-medium text-muted-foreground rounded-md hover:bg-muted hover:text-foreground">
+          <div className="flex items-center px-2 py-2 text-sm font-medium text-muted-foreground rounded-md hover:bg-muted hover:text-foreground cursor-pointer">
             <Settings className="mr-3 h-5 w-5" />
             Settings
-          </a>
+          </div>
         </Link>
       </div>
     </div>
