@@ -39,6 +39,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth"; // Add auth hook import
 
 interface FileAnalysis {
   filename: string;
@@ -76,6 +77,7 @@ interface SteppsAnalysis {
 
 export default function MarketIntelligencePage() {
   const { toast } = useToast();
+  const { user } = useAuth(); // Add auth context
   const [uploadedFiles, setUploadedFiles] = useState<FileAnalysis[]>([]);
   const [activeIntegrations, setActiveIntegrations] = useState<Integration[]>([]);
   const [monitoredUrls, setMonitoredUrls] = useState<string[]>([]);
@@ -160,13 +162,14 @@ export default function MarketIntelligencePage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Add auth headers from current session
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          // Use credentials: 'include' for session authentication
+          credentials: 'include'
         },
         body: JSON.stringify({ urls: [url] }),
       });
       if (!response.ok) {
-        throw new Error('Failed to add URL for monitoring');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to add URL for monitoring');
       }
       return response.json();
     },
@@ -223,7 +226,7 @@ export default function MarketIntelligencePage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          credentials: 'include'
         },
         body: JSON.stringify(content),
       });
