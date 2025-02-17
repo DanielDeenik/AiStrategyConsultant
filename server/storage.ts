@@ -1,8 +1,13 @@
 import { IStorage } from "./types";
-import { InsertUser, User, Strategy, Competitor, Session, users, strategies, competitors, sessions } from "@shared/schema";
+import {
+  InsertUser, User, Strategy, Competitor, Session,
+  users, strategies, competitors, sessions,
+  viralityScores, marketTrends, competitiveAnalysis,
+  ViralityScore, MarketTrend, CompetitiveAnalysis
+} from "@shared/schema";
 import session from "express-session";
 import { db } from "./db";
-import { eq, gt } from "drizzle-orm";
+import { eq, gt, and } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 
@@ -64,8 +69,12 @@ export class DatabaseStorage implements IStorage {
     const [session] = await db
       .select()
       .from(sessions)
-      .where(eq(sessions.refresh_token, refreshToken))
-      .where(gt(sessions.expires_at, new Date()));
+      .where(
+        and(
+          eq(sessions.refresh_token, refreshToken),
+          gt(sessions.expires_at, new Date())
+        )
+      );
     return session;
   }
 
@@ -91,6 +100,44 @@ export class DatabaseStorage implements IStorage {
   async createCompetitor(competitor: Omit<Competitor, "id">): Promise<Competitor> {
     const [newCompetitor] = await db.insert(competitors).values(competitor).returning();
     return newCompetitor;
+  }
+
+  async createViralityScore(score: Omit<ViralityScore, "id">): Promise<ViralityScore> {
+    const [newScore] = await db.insert(viralityScores).values(score).returning();
+    return newScore;
+  }
+
+  async getViralityScoreByStrategy(strategyId: number): Promise<ViralityScore | undefined> {
+    const [score] = await db
+      .select()
+      .from(viralityScores)
+      .where(eq(viralityScores.strategy_id, strategyId));
+    return score;
+  }
+
+  async createMarketTrend(trend: Omit<MarketTrend, "id">): Promise<MarketTrend> {
+    const [newTrend] = await db.insert(marketTrends).values(trend).returning();
+    return newTrend;
+  }
+
+  async getRecentMarketTrends(limit: number = 10): Promise<MarketTrend[]> {
+    return db
+      .select()
+      .from(marketTrends)
+      .orderBy(marketTrends.captured_at)
+      .limit(limit);
+  }
+
+  async createCompetitiveAnalysis(analysis: Omit<CompetitiveAnalysis, "id">): Promise<CompetitiveAnalysis> {
+    const [newAnalysis] = await db.insert(competitiveAnalysis).values(analysis).returning();
+    return newAnalysis;
+  }
+
+  async getCompetitiveAnalysisByStrategy(strategyId: number): Promise<CompetitiveAnalysis[]> {
+    return db
+      .select()
+      .from(competitiveAnalysis)
+      .where(eq(competitiveAnalysis.strategy_id, strategyId));
   }
 }
 
