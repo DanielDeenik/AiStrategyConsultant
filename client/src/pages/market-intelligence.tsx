@@ -74,7 +74,7 @@ interface SteppsAnalysis {
   emotion: number;
   public: number;
   practicalValue: number;
-  stories: number;
+  story_score: number;
   recommendations: string[];
 }
 
@@ -915,24 +915,24 @@ export default function MarketIntelligencePage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-medium mb-2">Stories</h3>
-                    <Progress value={steppsAnalysis.stories * 100} className="mb-1" />
-                    <p className="text-xs text-muted-foreground">{steppsAnalysis.stories * 100}%</p>
+                    <Progress value={steppsAnalysis.story_score * 100} className="mb-1/>
+                    <p className="text-xs text-muted-foreground">{steppsAnalysis.story_score * 100}%</p>
                   </div>
                 </div>
-                <div className="mt-4">
-                  <h3 className="text-sm font-medium mb-2">Recommendations</h3>
+                <div className="bg-muted/50 p-4 rounded-lg mt-4">
+                  <h4 className="font-medium mb-2">AI Recommendations</h4>
                   <ul className="space-y-2">
-                    {steppsAnalysis.recommendations.map((rec, index) => (
-                      <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
-                        <AlertCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                        <span>{rec}</span>
+                    {(steppsAnalysis.recommendations as string[]).map((rec, index) => (
+                      <li key={index} className="text-sm flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-primary" />
+                        {rec}
                       </li>
                     ))}
                   </ul>
                 </div>
               </div>
             ) : (
-              <p className="text-muted-foreground">No STEPPS analysis data available</p>
+              <p className="text-muted-foreground">No virality prediction data available</p>
             )}
           </CardContent>
         </Card>
@@ -962,7 +962,12 @@ export default function MarketIntelligencePage() {
                     <div className="mt-4">
                       <p className="text-sm text-muted-foreground">AI Recommendations</p>
                       <ul className="mt-2 space-y-2">
-                        {renderAIRecommendations(analysis.ai_recommendations)}
+                        {(analysis.ai_recommendations as string[]).map((rec, index) => (
+                          <li key={index} className="text-sm flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-primary" />
+                            {rec}
+                          </li>
+                        ))}
                       </ul>
                     </div>
                   </div>
@@ -1046,3 +1051,5 @@ export default function MarketIntelligencePage() {
     </div>
   );
 }
+
+export default MarketIntelligencePage;
