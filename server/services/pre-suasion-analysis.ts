@@ -38,8 +38,12 @@ export const presuasionAnalysisService = {
         response_format: { type: "json_object" }
       });
 
+      if (!response.choices[0].message.content) {
+        throw new Error("No content in OpenAI response");
+      }
+
       const result = JSON.parse(response.choices[0].message.content);
-      
+
       return {
         persuasion_score: result.persuasion_score,
         behavioral_insights: result.behavioral_insights,
@@ -74,8 +78,12 @@ export const presuasionAnalysisService = {
         response_format: { type: "json_object" }
       });
 
+      if (!response.choices[0].message.content) {
+        throw new Error("No content in OpenAI response");
+      }
+
       const result = JSON.parse(response.choices[0].message.content);
-      
+
       return {
         variants: result.variants,
         predictions: result.predictions

@@ -637,6 +637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ai_insights: trendAnalysis.ai_insights,
         industry_category: industryCategory,
         related_technologies: trendAnalysis.related_technologies,
+        captured_at: new Date()
       });
 
       res.json(trend);

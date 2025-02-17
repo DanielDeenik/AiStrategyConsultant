@@ -251,10 +251,13 @@ export class DatabaseStorage implements IStorage {
       .orderBy(automationTasks.created_at);
   }
 
-  async updateTaskStatus(taskId: number, status: string): Promise<AutomationTask> {
+  async updateTaskStatus(taskId: number, status: "pending" | "in_progress" | "completed" | "failed"): Promise<AutomationTask> {
     const [updatedTask] = await db
       .update(automationTasks)
-      .set({ status, completed_at: status === 'completed' ? new Date() : null })
+      .set({ 
+        status, 
+        completed_at: status === 'completed' ? new Date() : null 
+      })
       .where(eq(automationTasks.id, taskId))
       .returning();
     return updatedTask;
@@ -287,10 +290,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(kpiMetrics.last_updated);
   }
 
-  async updateKpiMetric(metricId: number, currentValue: string, status: string): Promise<KpiMetric> {
+  async updateKpiMetric(metricId: number, currentValue: string, status: "ahead" | "on_track" | "behind"): Promise<KpiMetric> {
     const [updatedMetric] = await db
       .update(kpiMetrics)
-      .set({ current_value: currentValue, status, last_updated: new Date() })
+      .set({ 
+        current_value: currentValue, 
+        status, 
+        last_updated: new Date() 
+      })
       .where(eq(kpiMetrics.id, metricId))
       .returning();
     return updatedMetric;
@@ -355,8 +362,10 @@ export class DatabaseStorage implements IStorage {
     return db
       .select()
       .from(apiKeys)
-      .where(eq(apiKeys.user_id, userId))
-      .where(eq(apiKeys.is_active, true))
+      .where(and(
+        eq(apiKeys.user_id, userId),
+        eq(apiKeys.is_active, true)
+      ))
       .orderBy(apiKeys.created_at);
   }
 
@@ -371,8 +380,10 @@ export class DatabaseStorage implements IStorage {
     const [apiKey] = await db
       .select()
       .from(apiKeys)
-      .where(eq(apiKeys.key, key))
-      .where(eq(apiKeys.is_active, true));
+      .where(and(
+        eq(apiKeys.key, key),
+        eq(apiKeys.is_active, true)
+      ));
     return apiKey;
   }
 
