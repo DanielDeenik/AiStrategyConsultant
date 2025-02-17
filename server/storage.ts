@@ -34,20 +34,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+    try {
+      const [user] = await db.insert(users).values(insertUser).returning();
+      return user;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw new Error('Failed to create user');
+    }
   }
 
   async createSession(userId: number, refreshToken: string, expiresAt: Date): Promise<Session> {
-    const [session] = await db
-      .insert(sessions)
-      .values({
-        user_id: userId,
-        refresh_token: refreshToken,
-        expires_at: expiresAt,
-      })
-      .returning();
-    return session;
+    try {
+      const [session] = await db
+        .insert(sessions)
+        .values({
+          user_id: userId,
+          refresh_token: refreshToken,
+          expires_at: expiresAt,
+        })
+        .returning();
+      return session;
+    } catch (error) {
+      console.error('Error creating session:', error);
+      throw new Error('Failed to create session');
+    }
   }
 
   async getValidSession(refreshToken: string): Promise<Session | undefined> {
