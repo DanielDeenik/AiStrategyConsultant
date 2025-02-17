@@ -49,7 +49,7 @@ export function setupAuth(app: Express) {
       // Check if any admin exists
       const existingAdmin = await storage.getUserByEmail(email);
       if (existingAdmin) {
-        return res.status(400).json({ message: "Admin already exists" });
+        return res.status(400).json({ message: "An account with this email already exists" });
       }
 
       const hashedPassword = await hashPassword(password);
@@ -84,8 +84,13 @@ export function setupAuth(app: Express) {
 
       const user = await storage.getUserByEmail(email);
 
-      if (!user || !(await comparePasswords(password, user.password))) {
-        return res.status(401).json({ message: "Invalid credentials" });
+      if (!user) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+
+      const passwordValid = await comparePasswords(password, user.password);
+      if (!passwordValid) {
+        return res.status(401).json({ message: "Invalid email or password" });
       }
 
       if (user.role !== "admin") {
@@ -145,7 +150,6 @@ export function setupAuth(app: Express) {
       res.status(401).json({ message: "Invalid refresh token" });
     }
   });
-
   // Example protected admin route
   app.get("/api/admin/protected", requireAdmin, (req, res) => {
     res.json({ message: "Admin access granted", user: req.user });
