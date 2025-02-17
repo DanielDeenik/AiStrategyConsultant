@@ -8,6 +8,12 @@ import {
   Calculator,
   Webhook,
   Settings,
+  TrendingUp,
+  BarChart2,
+  LineChart,
+  Building2,
+  Zap,
+  Radar,
 } from "lucide-react";
 
 const navigation = [
@@ -20,6 +26,26 @@ const navigation = [
     name: "Market Intelligence",
     href: "/market-intelligence",
     icon: Target,
+  },
+  {
+    name: "Asqin BV Insights",
+    href: "/market-intelligence/asqin",
+    icon: Building2,
+  },
+  {
+    name: "Virality Prediction",
+    href: "/market-intelligence/virality",
+    icon: Zap,
+  },
+  {
+    name: "Investment Signals",
+    href: "/market-intelligence/investment",
+    icon: TrendingUp,
+  },
+  {
+    name: "Trend Forecasting",
+    href: "/market-intelligence/trends",
+    icon: LineChart,
   },
   {
     name: "AI Strategy",
