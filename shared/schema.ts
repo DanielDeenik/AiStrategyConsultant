@@ -105,8 +105,45 @@ export const strategyConfidence = pgTable("strategy_confidence", {
   calculated_at: timestamp("calculated_at").defaultNow(),
 });
 
-// Schemas for inserting data
+// New tables for execution automation
+export const automationTasks = pgTable("automation_tasks", {
+  id: serial("id").primaryKey(),
+  strategy_id: integer("strategy_id").references(() => strategies.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  status: text("status", { enum: ["pending", "in_progress", "completed", "failed"] }).default("pending").notNull(),
+  tool: text("tool", { enum: ["notion", "trello", "slack", "zapier"] }).notNull(),
+  action_details: json("action_details").notNull(),
+  scheduled_for: timestamp("scheduled_for"),
+  completed_at: timestamp("completed_at"),
+  created_at: timestamp("created_at").defaultNow(),
+  user_id: integer("user_id").references(() => users.id).notNull(),
+});
 
+export const toolIntegrations = pgTable("tool_integrations", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id").references(() => users.id).notNull(),
+  tool_name: text("tool_name").notNull(),
+  access_token: text("access_token").notNull(),
+  workspace_id: text("workspace_id"),
+  settings: json("settings"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const kpiMetrics = pgTable("kpi_metrics", {
+  id: serial("id").primaryKey(),
+  strategy_id: integer("strategy_id").references(() => strategies.id).notNull(),
+  metric_name: text("metric_name").notNull(),
+  target_value: decimal("target_value").notNull(),
+  current_value: decimal("current_value").notNull(),
+  unit: text("unit").notNull(),
+  status: text("status", { enum: ["ahead", "on_track", "behind"] }).notNull(),
+  last_updated: timestamp("last_updated").defaultNow(),
+  user_id: integer("user_id").references(() => users.id).notNull(),
+});
+
+// Schemas for inserting data
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   username: true,
@@ -183,6 +220,34 @@ export const insertGrowthPlaybookSchema = createInsertSchema(growthPlaybooks).pi
   user_id: true,
 });
 
+// Add schemas for inserting data
+export const insertAutomationTaskSchema = createInsertSchema(automationTasks).pick({
+  strategy_id: true,
+  title: true,
+  description: true,
+  tool: true,
+  action_details: true,
+  scheduled_for: true,
+  user_id: true,
+});
+
+export const insertToolIntegrationSchema = createInsertSchema(toolIntegrations).pick({
+  user_id: true,
+  tool_name: true,
+  access_token: true,
+  workspace_id: true,
+  settings: true,
+});
+
+export const insertKpiMetricSchema = createInsertSchema(kpiMetrics).pick({
+  strategy_id: true,
+  metric_name: true,
+  target_value: true,
+  current_value: true,
+  unit: true,
+  status: true,
+  user_id: true,
+});
 
 // Export types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -197,3 +262,9 @@ export type StrategyConfidence = typeof strategyConfidence.$inferSelect;
 export type InsertStrategyConfidence = z.infer<typeof insertStrategyConfidenceSchema>;
 export type GrowthPlaybook = typeof growthPlaybooks.$inferSelect;
 export type InsertGrowthPlaybook = z.infer<typeof insertGrowthPlaybookSchema>;
+export type AutomationTask = typeof automationTasks.$inferSelect;
+export type InsertAutomationTask = z.infer<typeof insertAutomationTaskSchema>;
+export type ToolIntegration = typeof toolIntegrations.$inferSelect;
+export type InsertToolIntegration = z.infer<typeof insertToolIntegrationSchema>;
+export type KpiMetric = typeof kpiMetrics.$inferSelect;
+export type InsertKpiMetric = z.infer<typeof insertKpiMetricSchema>;

@@ -16,6 +16,17 @@ import {
   type GrowthPlaybook,
   type InsertGrowthPlaybook,
 } from "@shared/schema";
+import {
+  automationTasks,
+  toolIntegrations,
+  kpiMetrics,
+  type AutomationTask,
+  type InsertAutomationTask,
+  type ToolIntegration,
+  type InsertToolIntegration,
+  type KpiMetric,
+  type InsertKpiMetric,
+} from "@shared/schema";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -206,6 +217,65 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(growthPlaybooks.scheduled_for);
+  }
+
+  // Automation Tasks
+  async createAutomationTask(task: InsertAutomationTask): Promise<AutomationTask> {
+    const [newTask] = await db.insert(automationTasks).values(task).returning();
+    return newTask;
+  }
+
+  async getAutomationTasks(userId: number): Promise<AutomationTask[]> {
+    return db
+      .select()
+      .from(automationTasks)
+      .where(eq(automationTasks.user_id, userId))
+      .orderBy(automationTasks.created_at);
+  }
+
+  async updateTaskStatus(taskId: number, status: string): Promise<AutomationTask> {
+    const [updatedTask] = await db
+      .update(automationTasks)
+      .set({ status, completed_at: status === 'completed' ? new Date() : null })
+      .where(eq(automationTasks.id, taskId))
+      .returning();
+    return updatedTask;
+  }
+
+  // Tool Integrations
+  async createToolIntegration(integration: InsertToolIntegration): Promise<ToolIntegration> {
+    const [newIntegration] = await db.insert(toolIntegrations).values(integration).returning();
+    return newIntegration;
+  }
+
+  async getToolIntegrations(userId: number): Promise<ToolIntegration[]> {
+    return db
+      .select()
+      .from(toolIntegrations)
+      .where(eq(toolIntegrations.user_id, userId));
+  }
+
+  // KPI Metrics
+  async createKpiMetric(metric: InsertKpiMetric): Promise<KpiMetric> {
+    const [newMetric] = await db.insert(kpiMetrics).values(metric).returning();
+    return newMetric;
+  }
+
+  async getKpiMetrics(strategyId: number): Promise<KpiMetric[]> {
+    return db
+      .select()
+      .from(kpiMetrics)
+      .where(eq(kpiMetrics.strategy_id, strategyId))
+      .orderBy(kpiMetrics.last_updated);
+  }
+
+  async updateKpiMetric(metricId: number, currentValue: string, status: string): Promise<KpiMetric> {
+    const [updatedMetric] = await db
+      .update(kpiMetrics)
+      .set({ current_value: currentValue, status, last_updated: new Date() })
+      .where(eq(kpiMetrics.id, metricId))
+      .returning();
+    return updatedMetric;
   }
 }
 

@@ -8,6 +8,7 @@ import { requireAuth } from "./jwt";
 import { aiAnalysisService } from "./services/ai-analysis";
 import { strategyConfidenceService } from "./services/strategy-confidence";
 import { growthPlaybookService } from "./services/growth-playbook";
+import { executionAutomationService } from "./services/execution-automation";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -292,6 +293,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching scheduled playbooks:", error);
       res.status(500).json({ message: "Failed to fetch scheduled playbooks" });
+    }
+  });
+
+  // Execution Automation Routes
+  app.post("/api/execution/automation/tasks", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { strategy, marketContext, selectedTools, strategyId } = req.body;
+
+      const tasks = await executionAutomationService.generateAutomationTasks(
+        strategy,
+        marketContext,
+        selectedTools
+      );
+
+      const createdTasks = await Promise.all(
+        tasks.map(async (taskDetails) => {
+          const task = await executionAutomationService.createAutomationTask(
+            taskDetails,
+            strategyId,
+            req.user!.id
+          );
+          return storage.createAutomationTask(task);
+        })
+      );
+
+      res.json(createdTasks);
+    } catch (error) {
+      console.error("Error generating automation tasks:", error);
+      res.status(500).json({ message: "Failed to generate automation tasks" });
+    }
+  });
+
+  app.get("/api/execution/automation/tasks", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const tasks = await storage.getAutomationTasks(req.user.id);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching automation tasks:", error);
+      res.status(500).json({ message: "Failed to fetch automation tasks" });
+    }
+  });
+
+  app.post("/api/execution/kpi/targets", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { strategy, marketData, historicalPerformance, strategyId } = req.body;
+
+      const kpiTargets = await executionAutomationService.generateKPITargets(
+        strategy,
+        marketData,
+        historicalPerformance
+      );
+
+      const createdMetrics = await Promise.all(
+        kpiTargets.map(async (kpiTarget) => {
+          const metric = await executionAutomationService.createKPIMetric(
+            kpiTarget,
+            strategyId,
+            req.user!.id
+          );
+          return storage.createKpiMetric(metric);
+        })
+      );
+
+      res.json(createdMetrics);
+    } catch (error) {
+      console.error("Error generating KPI targets:", error);
+      res.status(500).json({ message: "Failed to generate KPI targets" });
+    }
+  });
+
+  app.get("/api/execution/kpi/:strategyId", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const strategyId = parseInt(req.params.strategyId);
+      const metrics = await storage.getKpiMetrics(strategyId);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching KPI metrics:", error);
+      res.status(500).json({ message: "Failed to fetch KPI metrics" });
+    }
+  });
+
+  app.post("/api/execution/kpi/:metricId/update", requireAuth, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const metricId = parseInt(req.params.metricId);
+      const { currentValue, status } = req.body;
+      const updatedMetric = await storage.updateKpiMetric(metricId, currentValue, status);
+      res.json(updatedMetric);
+    } catch (error) {
+      console.error("Error updating KPI metric:", error);
+      res.status(500).json({ message: "Failed to update KPI metric" });
     }
   });
 
